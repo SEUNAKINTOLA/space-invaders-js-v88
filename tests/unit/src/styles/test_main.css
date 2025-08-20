@@ -1,0 +1,174 @@
+"""
+Unit tests for src/styles/main.css styles validation.
+Tests CSS syntax, required game styles, and responsive design rules.
+
+Author: AI Assistant
+"""
+
+# TODO: Fix import - import unittest
+import os
+import re
+from typing import Dict, List, Optional
+
+class CSSParser:
+    """Parser for CSS files to extract and validate style rules."""
+    
+    def __init__(self, css_content: str):
+        self.content = css_content
+        self.rules: Dict[str, Dict[str, str]] = {}
+        self._parse()
+
+    def _parse(self) -> None:
+        """Parse CSS content into structured rules."""
+        # Remove comments
+        content = re.sub(r'/\*.*?\*/', '', self.content, flags=re.DOTALL)
+        
+        # Split into rule blocks
+        blocks = re.findall(r'([^{]+){([^}]+)}', content)
+        
+        for selector, declarations in blocks:
+            selector = selector.strip()
+            rules = {}
+            
+            # Parse declarations
+            for declaration in declarations.split(';'):
+                declaration = declaration.strip()
+                if declaration:
+                    try:
+                        property_name, value = declaration.split(':', 1)
+                        rules[property_name.strip()] = value.strip()
+                    except ValueError:
+                        continue
+                        
+            self.rules[selector] = rules
+
+    def get_rule(self, selector: str) -> Optional[Dict[str, str]]:
+        """Get rules for a specific selector."""
+        return self.rules.get(selector)
+
+    def has_property(self, selector: str, property_name: str) -> bool:
+        """Check if selector has specific CSS property."""
+        rules = self.get_rule(selector)
+        return rules is not None and property_name in rules
+
+    def get_property_value(self, selector: str, property_name: str) -> Optional[str]:
+        """Get value of specific CSS property for selector."""
+        rules = self.get_rule(selector)
+        return rules.get(property_name) if rules else None
+
+
+class TestMainCSS(unittest.TestCase):
+    """Test suite for main.css styles validation."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up test class by reading CSS file content."""
+        css_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src', 'styles', 'main.css')
+        try:
+            with open(css_path, 'r') as f:
+                cls.css_content = f.read()
+            cls.parser = CSSParser(cls.css_content)
+        except FileNotFoundError:
+            raise unittest.SkipTest("main.css file not found")
+
+    def test_game_container_styles(self):
+        """Test game container has required styles."""
+        container_rules = self.parser.get_rule('#game-container')
+        self.assertIsNotNone(container_rules, "Game container styles not found")
+        
+        # Check position
+        self.assertEqual(
+            container_rules.get('position'),
+            'relative',
+            "Game container should have relative positioning"
+        )
+        
+        # Check display
+        self.assertTrue(
+            self.parser.has_property('#game-container', 'display'),
+            "Game container should have display property"
+        )
+
+    def test_canvas_styles(self):
+        """Test canvas element has required styles."""
+        canvas_rules = self.parser.get_rule('canvas')
+        self.assertIsNotNone(canvas_rules, "Canvas styles not found")
+        
+        # Check display
+        self.assertTrue(
+            self.parser.has_property('canvas', 'display'),
+            "Canvas should have display property"
+        )
+        
+        # Check background
+        self.assertTrue(
+            self.parser.has_property('canvas', 'background-color'),
+            "Canvas should have background-color property"
+        )
+
+    def test_ui_element_styles(self):
+        """Test UI element styles exist and have required properties."""
+        # Score display
+        score_rules = self.parser.get_rule('.score-display')
+        self.assertIsNotNone(score_rules, "Score display styles not found")
+        
+        # Volume control
+        volume_rules = self.parser.get_rule('.volume-control')
+        self.assertIsNotNone(volume_rules, "Volume control styles not found")
+
+    def test_responsive_design(self):
+        """Test responsive design media queries exist."""
+        media_queries = [rule for rule in self.parser.rules.keys() if '@media' in rule]
+        self.assertGreater(
+            len(media_queries), 
+            0, 
+            "No media queries found for responsive design"
+        )
+
+    def test_game_element_positioning(self):
+        """Test game elements have proper positioning styles."""
+        elements = ['.player', '.enemy', '.projectile']
+        for element in elements:
+            rules = self.parser.get_rule(element)
+            if rules:
+                self.assertTrue(
+                    self.parser.has_property(element, 'position'),
+                    f"{element} should have position property"
+                )
+
+    def test_animation_styles(self):
+        """Test animation and transition properties."""
+        # Check keyframes exist
+        keyframes = [rule for rule in self.parser.rules.keys() if '@keyframes' in rule]
+        self.assertGreater(
+            len(keyframes),
+            0,
+            "No animation keyframes found"
+        )
+        
+        # Check transition properties
+        animated_elements = ['.enemy', '.player', '.projectile']
+        for element in animated_elements:
+            self.assertTrue(
+                any(
+                    self.parser.has_property(element, prop)
+                    for prop in ['transition', 'animation']
+                ),
+                f"{element} should have animation or transition properties"
+            )
+
+    def test_style_consistency(self):
+        """Test consistency of style values."""
+        color_pattern = r'^#[0-9a-fA-F]{6}$|^#[0-9a-fA-F]{3}$|^rgb\(.*\)$|^rgba\(.*\)$'
+        
+        for selector, rules in self.parser.rules.items():
+            for prop, value in rules.items():
+                if 'color' in prop.lower():
+                    self.assertRegex(
+                        value,
+                        color_pattern,
+                        f"Invalid color format in {selector} for {prop}: {value}"
+                    )
+
+if __name__ == '__main__':
+    unittest.main()
