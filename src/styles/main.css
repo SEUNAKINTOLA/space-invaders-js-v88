@@ -1,0 +1,178 @@
+/* Space Invaders JS V88 Main Stylesheet */
+
+/* CSS Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* Color Variables */
+    --primary-color: #00ff00;
+    --background-color: #000000;
+    --text-color: #ffffff;
+    --accent-color: #ff0000;
+    --ui-background: rgba(0, 0, 0, 0.8);
+    
+    /* Game Dimensions */
+    --game-max-width: 800px;
+    --game-height: 600px;
+    
+    /* UI Elements */
+    --control-padding: 1rem;
+    --border-radius: 4px;
+}
+
+/* Body and Main Container */
+body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+    font-family: 'Press Start 2P', monospace;
+    line-height: 1.6;
+    overflow: hidden;
+}
+
+.game-container {
+    width: 100%;
+    max-width: var(--game-max-width);
+    height: var(--game-height);
+    margin: 0 auto;
+    position: relative;
+}
+
+/* Canvas Styling */
+#gameCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-color: var(--background-color);
+}
+
+/* UI Elements */
+.ui-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: var(--control-padding);
+    background: var(--ui-background);
+    z-index: 100;
+}
+
+.score-display {
+    font-size: 1.2rem;
+    color: var(--primary-color);
+    text-align: right;
+    padding: 0.5rem;
+}
+
+.volume-control {
+    position: absolute;
+    bottom: var(--control-padding);
+    right: var(--control-padding);
+    background: var(--ui-background);
+    padding: 0.5rem;
+    border-radius: var(--border-radius);
+}
+
+/* Game Controls */
+.controls {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: var(--control-padding);
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.control-button {
+    background: var(--primary-color);
+    color: var(--background-color);
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+
+.control-button:hover {
+    opacity: 0.8;
+}
+
+/* Game States */
+.game-over,
+.pause-menu {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--ui-background);
+    padding: 2rem;
+    text-align: center;
+    border-radius: var(--border-radius);
+    display: none;
+}
+
+.game-over.active,
+.pause-menu.active {
+    display: block;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    :root {
+        --game-max-width: 100%;
+        --control-padding: 0.5rem;
+    }
+    
+    .score-display {
+        font-size: 1rem;
+    }
+    
+    .controls {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+
+/* Animations */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.enemy {
+    animation: pulse 2s infinite;
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+    .enemy {
+        animation: none;
+    }
+    
+    .control-button {
+        transition: none;
+    }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+    :root {
+        --primary-color: #ffffff;
+        --text-color: #ffffff;
+        --accent-color: #ffffff;
+        --ui-background: rgba(0, 0, 0, 0.95);
+    }
+}
+
+/* Print Styles */
+@media print {
+    .game-container {
+        display: none;
+    }
+}

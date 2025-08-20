@@ -1,0 +1,146 @@
+name: Space Invaders CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: |
+        npm ci
+        
+    - name: Run linting
+      run: |
+        npm run lint
+      continue-on-error: false
+
+    - name: Run unit tests
+      run: |
+        npm run test:unit
+      env:
+        CI: true
+
+    - name: Run integration tests
+      run: |
+        npm run test:integration
+      env:
+        CI: true
+
+    - name: Build project
+      run: |
+        npm run build
+      env:
+        CI: true
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-files
+        path: dist/
+
+  performance:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run performance tests
+      run: |
+        npm run test:performance
+      env:
+        CI: true
+
+  security:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Run security audit
+      run: npm audit
+
+    - name: Run dependency vulnerability check
+      uses: snyk/actions/node@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      continue-on-error: true
+
+  deploy-preview:
+    if: github.event_name == 'pull_request'
+    needs: [build-and-test, performance, security]
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: build-files
+        path: dist/
+
+    - name: Deploy to preview environment
+      run: |
+        echo "Deploying to preview environment..."
+        # Add deployment steps here
+      env:
+        DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+
+  deploy-production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build-and-test, performance, security]
+    runs-on: ubuntu-latest
+    
+    environment:
+      name: production
+      url: https://space-invaders-v88.example.com
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: build-files
+        path: dist/
+
+    - name: Deploy to production
+      run: |
+        echo "Deploying to production..."
+        # Add production deployment steps here
+      env:
+        DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
