@@ -1,198 +1,179 @@
 /**
- * @fileoverview Enemy entity class for Space Invaders game
- * Handles enemy behavior, state management, and movement patterns
+ * @fileoverview Enemy class implementation for Space Invaders game
+ * Handles enemy behavior, movement patterns, and state management
  */
 
-// Constants for enemy configuration
-const ENEMY_DEFAULTS = {
-    width: 32,
-    height: 32,
-    speed: 2,
-    health: 1,
-    points: 10
-};
-
-/**
- * Represents an enemy entity in the game
- */
 class Enemy {
     /**
-     * Creates a new Enemy instance
-     * @param {Object} config - Enemy configuration
-     * @param {number} config.x - Initial X position
-     * @param {number} config.y - Initial Y position
+     * Creates a new enemy instance
+     * @param {Object} config - Enemy configuration object
+     * @param {number} config.x - Initial x position
+     * @param {number} config.y - Initial y position
+     * @param {number} config.width - Enemy width
+     * @param {number} config.height - Enemy height
+     * @param {number} config.speed - Movement speed
+     * @param {number} config.health - Initial health points
      * @param {string} config.type - Enemy type identifier
-     * @param {Object} [config.pattern] - Movement pattern configuration
-     * @param {number} [config.health] - Enemy health points
-     * @param {number} [config.speed] - Movement speed
-     * @param {number} [config.points] - Score points value
+     * @param {string} config.movementPattern - Movement pattern identifier
      */
     constructor(config) {
-        if (!config || typeof config !== 'object') {
-            throw new Error('Enemy requires configuration object');
-        }
-
-        // Required properties
-        this.validatePosition(config.x, config.y);
-        this.x = config.x;
-        this.y = config.y;
-        this.type = this.validateType(config.type);
-
-        // Optional properties with defaults
-        this.width = config.width || ENEMY_DEFAULTS.width;
-        this.height = config.height || ENEMY_DEFAULTS.height;
-        this.speed = config.speed || ENEMY_DEFAULTS.speed;
-        this.health = config.health || ENEMY_DEFAULTS.health;
-        this.points = config.points || ENEMY_DEFAULTS.points;
+        // Position and dimensions
+        this.x = config.x || 0;
+        this.y = config.y || 0;
+        this.width = config.width || 32;
+        this.height = config.height || 32;
         
-        // State management
-        this.isActive = true;
-        this.isVisible = true;
+        // Movement and behavior
+        this.speed = config.speed || 2;
         this.direction = 1; // 1 for right, -1 for left
-        this.pattern = config.pattern || null;
-        this.patternStep = 0;
+        this.movementPattern = config.movementPattern || 'horizontal';
         
-        // Movement tracking
-        this.lastUpdate = performance.now();
-        this.velocity = { x: 0, y: 0 };
+        // Game state
+        this.health = config.health || 1;
+        this.type = config.type || 'basic';
+        this.isActive = true;
+        this.points = this.calculatePoints();
+        
+        // Internal state
+        this._lastUpdate = Date.now();
+        this._animationFrame = 0;
     }
 
     /**
-     * Validates position coordinates
-     * @private
-     * @param {number} x - X coordinate
-     * @param {number} y - Y coordinate
-     * @throws {Error} If coordinates are invalid
+     * Updates enemy position and state
+     * @param {number} deltaTime - Time elapsed since last update in milliseconds
+     * @param {Object} gameState - Current game state
+     * @returns {void}
      */
-    validatePosition(x, y) {
-        if (typeof x !== 'number' || typeof y !== 'number' || 
-            isNaN(x) || isNaN(y)) {
-            throw new Error('Invalid enemy position coordinates');
-        }
-    }
-
-    /**
-     * Validates enemy type
-     * @private
-     * @param {string} type - Enemy type identifier
-     * @returns {string} Validated type
-     * @throws {Error} If type is invalid
-     */
-    validateType(type) {
-        if (!type || typeof type !== 'string') {
-            throw new Error('Invalid enemy type');
-        }
-        return type;
-    }
-
-    /**
-     * Updates enemy state and position
-     * @param {number} deltaTime - Time elapsed since last update
-     * @param {Object} bounds - Screen boundaries
-     */
-    update(deltaTime, bounds) {
+    update(deltaTime, gameState) {
         if (!this.isActive) return;
 
-        if (this.pattern) {
-            this.updatePattern(deltaTime);
-        } else {
-            this.updateBasicMovement(deltaTime, bounds);
-        }
-
-        this.lastUpdate = performance.now();
-    }
-
-    /**
-     * Updates position based on pattern
-     * @private
-     * @param {number} deltaTime - Time elapsed since last update
-     */
-    updatePattern(deltaTime) {
-        if (!this.pattern || !this.pattern.getPosition) return;
-
-        const newPosition = this.pattern.getPosition(this.patternStep);
-        if (newPosition) {
-            this.x = newPosition.x;
-            this.y = newPosition.y;
-            this.patternStep++;
-        }
-    }
-
-    /**
-     * Updates position using basic side-to-side movement
-     * @private
-     * @param {number} deltaTime - Time elapsed since last update
-     * @param {Object} bounds - Screen boundaries
-     */
-    updateBasicMovement(deltaTime, bounds) {
-        const movement = this.speed * this.direction * deltaTime;
-        this.x += movement;
-
-        // Boundary checking
-        if (bounds) {
-            if (this.x <= bounds.left || this.x + this.width >= bounds.right) {
-                this.direction *= -1; // Reverse direction
-                this.y += this.height; // Move down
-            }
-        }
+        this._updatePosition(deltaTime);
+        this._updateAnimation(deltaTime);
+        this._checkBoundaries(gameState);
     }
 
     /**
      * Handles enemy taking damage
-     * @param {number} amount - Amount of damage to take
-     * @returns {boolean} Whether the enemy was destroyed
+     * @param {number} damage - Amount of damage to apply
+     * @returns {boolean} - Returns true if enemy is destroyed
      */
-    takeDamage(amount) {
-        if (!this.isActive) return false;
+    takeDamage(damage) {
+        this.health -= damage;
         
-        this.health -= amount;
         if (this.health <= 0) {
-            this.destroy();
+            this.isActive = false;
             return true;
         }
         return false;
     }
 
     /**
-     * Destroys the enemy
-     */
-    destroy() {
-        this.isActive = false;
-        this.isVisible = false;
-    }
-
-    /**
-     * Gets the current enemy bounds
-     * @returns {Object} Enemy bounds rectangle
+     * Gets enemy's current collision bounds
+     * @returns {Object} Collision rectangle
      */
     getBounds() {
         return {
-            left: this.x,
-            top: this.y,
-            right: this.x + this.width,
-            bottom: this.y + this.height,
+            x: this.x,
+            y: this.y,
             width: this.width,
             height: this.height
         };
     }
 
     /**
-     * Checks collision with another entity
-     * @param {Object} entity - Entity to check collision with
-     * @returns {boolean} Whether collision occurred
+     * Calculates point value based on enemy type
+     * @private
+     * @returns {number} Point value
      */
-    checkCollision(entity) {
-        if (!this.isActive || !entity) return false;
+    calculatePoints() {
+        const pointValues = {
+            'basic': 10,
+            'advanced': 20,
+            'boss': 50
+        };
+        return pointValues[this.type] || 10;
+    }
 
-        const enemyBounds = this.getBounds();
-        const entityBounds = entity.getBounds();
+    /**
+     * Updates enemy position based on movement pattern
+     * @private
+     * @param {number} deltaTime - Time elapsed since last update
+     */
+    _updatePosition(deltaTime) {
+        const movement = this.speed * deltaTime / 1000;
 
-        return !(enemyBounds.left > entityBounds.right || 
-                enemyBounds.right < entityBounds.left || 
-                enemyBounds.top > entityBounds.bottom ||
-                enemyBounds.bottom < entityBounds.top);
+        switch (this.movementPattern) {
+            case 'horizontal':
+                this.x += movement * this.direction;
+                break;
+            case 'vertical':
+                this.y += movement;
+                break;
+            case 'zigzag':
+                this.x += movement * this.direction;
+                this.y += Math.sin(this._lastUpdate / 1000) * movement;
+                break;
+            default:
+                this.x += movement * this.direction;
+        }
+
+        this._lastUpdate = Date.now();
+    }
+
+    /**
+     * Updates enemy animation state
+     * @private
+     * @param {number} deltaTime - Time elapsed since last update
+     */
+    _updateAnimation(deltaTime) {
+        this._animationFrame = (this._animationFrame + deltaTime / 200) % 2;
+    }
+
+    /**
+     * Checks and handles boundary collisions
+     * @private
+     * @param {Object} gameState - Current game state
+     */
+    _checkBoundaries(gameState) {
+        const margin = 10;
+        
+        // Horizontal boundaries
+        if (this.x <= margin || this.x >= gameState.width - this.width - margin) {
+            this.direction *= -1;
+            this.y += this.height; // Move down when hitting edge
+        }
+
+        // Vertical boundaries
+        if (this.y >= gameState.height - this.height - margin) {
+            this.isActive = false;
+            gameState.onEnemyReachedBottom?.();
+        }
+    }
+
+    /**
+     * Checks if enemy can fire based on game rules
+     * @returns {boolean} Whether enemy can fire
+     */
+    canFire() {
+        return this.isActive && Math.random() < 0.01; // 1% chance to fire per update
+    }
+
+    /**
+     * Gets enemy's current state for saving/serialization
+     * @returns {Object} Enemy state
+     */
+    getState() {
+        return {
+            x: this.x,
+            y: this.y,
+            health: this.health,
+            type: this.type,
+            isActive: this.isActive,
+            direction: this.direction,
+            movementPattern: this.movementPattern
+        };
     }
 }
 
-// Export the Enemy class
 export default Enemy;
