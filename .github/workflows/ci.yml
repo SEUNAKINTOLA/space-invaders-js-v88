@@ -1,4 +1,5 @@
-name: Continuous Integration
+name: CI/CD Pipeline
+
 
 on:
   push:
@@ -26,13 +27,15 @@ jobs:
     - name: Install dependencies
       run: npm ci
       
-    - name: Run linting
+
+    - name: Run ESLint
       run: npm run lint
       
     - name: Run unit tests
       run: npm run test:unit
       
-    - name: Run integration tests
+
+    - name: Run integration tests  
       run: npm run test:integration
 
     - name: Run performance tests
@@ -42,15 +45,26 @@ jobs:
         COLLISION_BENCHMARK_ITERATIONS: 1000
         COLLISION_OBJECT_COUNT: 1000
         
+        PERFORMANCE_THRESHOLD_FPS: 60
+        PERFORMANCE_THRESHOLD_RENDER_TIME: 16.67
+        
+
+        node tests/performance/rendering.test.js --threshold=60
+
+
     - name: Generate performance report
       if: always()
       run: |
         echo "### Performance Test Results" >> $GITHUB_STEP_SUMMARY
-        cat performance-results.json >> $GITHUB_STEP_SUMMARY
+        echo "- Average FPS: $(cat performance-results.json | jq .avgFps)" >> $GITHUB_STEP_SUMMARY
+        echo "- Average render time: $(cat performance-results.json | jq .avgRenderTime)ms" >> $GITHUB_STEP_SUMMARY
+        echo "- Frame time consistency: $(cat performance-results.json | jq .frameTimeConsistency)%" >> $GITHUB_STEP_SUMMARY
 
-  benchmark:
+  build:
     needs: test
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
     
     steps:
     - uses: actions/checkout@v3
@@ -59,6 +73,7 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: '18.x'
+
         cache: 'npm'
         
     - name: Install dependencies
@@ -108,3 +123,21 @@ jobs:
         name: dist
         path: dist/
         retention-days: 30
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: dist
+        path: dist/
+        
+    - name: Deploy to production
+      run: |
+        # Add deployment steps here
+        echo "Deploying to production..."
+

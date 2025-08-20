@@ -1,0 +1,193 @@
+"""
+Sound Assets Module
+Manages sound effect assets for the Space Invaders game.
+
+This module provides a centralized location for sound file paths and metadata,
+ensuring consistent access to game audio assets across the application.
+"""
+
+# TODO: Fix import - from enum import Enum
+from pathlib import Path
+from typing import Dict, NamedTuple
+import os
+import logging
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+class SoundType(Enum):
+    """Enumeration of different types of game sounds."""
+    PLAYER_SHOOT = "player_shoot"
+    PLAYER_HIT = "player_hit"
+    PLAYER_DEATH = "player_death"
+    ENEMY_SHOOT = "enemy_shoot"
+    ENEMY_HIT = "enemy_hit"
+    ENEMY_DEATH = "enemy_death"
+    GAME_START = "game_start"
+    GAME_OVER = "game_over"
+    LEVEL_UP = "level_up"
+    MENU_SELECT = "menu_select"
+    POWERUP = "powerup"
+
+class SoundAsset(NamedTuple):
+    """Structure for sound asset metadata."""
+    filename: str
+    volume: float  # Default volume level (0.0 to 1.0)
+    loop: bool     # Whether the sound should loop
+    category: str  # Category for volume control grouping
+
+class SoundAssets:
+    """
+    Sound assets manager class.
+    Handles sound file paths and metadata for the game.
+    """
+    
+    # Base directory for sound assets
+    SOUND_DIR = Path("src/assets/sounds")
+    
+    # Sound file formats supported
+    SUPPORTED_FORMATS = (".wav", ".mp3", ".ogg")
+    
+    def __init__(self):
+        """Initialize sound assets configuration."""
+        self._assets: Dict[SoundType, SoundAsset] = {
+            SoundType.PLAYER_SHOOT: SoundAsset(
+                filename="laser_shoot.wav",
+                volume=0.4,
+                loop=False,
+                category="sfx"
+            ),
+            SoundType.PLAYER_HIT: SoundAsset(
+                filename="player_hit.wav",
+                volume=0.5,
+                loop=False,
+                category="sfx"
+            ),
+            SoundType.PLAYER_DEATH: SoundAsset(
+                filename="player_explosion.wav",
+                volume=0.6,
+                loop=False,
+                category="sfx"
+            ),
+            SoundType.ENEMY_SHOOT: SoundAsset(
+                filename="enemy_laser.wav",
+                volume=0.3,
+                loop=False,
+                category="sfx"
+            ),
+            SoundType.ENEMY_HIT: SoundAsset(
+                filename="enemy_hit.wav",
+                volume=0.4,
+                loop=False,
+                category="sfx"
+            ),
+            SoundType.ENEMY_DEATH: SoundAsset(
+                filename="enemy_explosion.wav",
+                volume=0.5,
+                loop=False,
+                category="sfx"
+            ),
+            SoundType.GAME_START: SoundAsset(
+                filename="game_start.wav",
+                volume=0.7,
+                loop=False,
+                category="music"
+            ),
+            SoundType.GAME_OVER: SoundAsset(
+                filename="game_over.wav",
+                volume=0.7,
+                loop=False,
+                category="music"
+            ),
+            SoundType.LEVEL_UP: SoundAsset(
+                filename="level_up.wav",
+                volume=0.6,
+                loop=False,
+                category="music"
+            ),
+            SoundType.MENU_SELECT: SoundAsset(
+                filename="menu_select.wav",
+                volume=0.3,
+                loop=False,
+                category="ui"
+            ),
+            SoundType.POWERUP: SoundAsset(
+                filename="powerup.wav",
+                volume=0.5,
+                loop=False,
+                category="sfx"
+            ),
+        }
+        
+        self._validate_assets()
+
+    def _validate_assets(self) -> None:
+        """
+        Validate that all sound assets exist and are in supported formats.
+        
+        Raises:
+            FileNotFoundError: If a required sound file is missing
+            ValueError: If a sound file has an unsupported format
+        """
+        if not self.SOUND_DIR.exists():
+            logger.warning(f"Sound directory not found: {self.SOUND_DIR}")
+            return
+
+        for sound_type, asset in self._assets.items():
+            file_path = self.SOUND_DIR / asset.filename
+            
+            # Check file exists
+            if not file_path.exists():
+                logger.error(f"Missing sound file: {file_path}")
+                raise FileNotFoundError(f"Sound file not found: {file_path}")
+            
+            # Check file format
+            if not file_path.suffix.lower() in self.SUPPORTED_FORMATS:
+                logger.error(f"Unsupported sound format: {file_path}")
+                raise ValueError(
+                    f"Unsupported sound format for {sound_type}: {file_path.suffix}"
+                )
+
+    def get_sound_path(self, sound_type: SoundType) -> Path:
+        """
+        Get the full path for a sound asset.
+
+        Args:
+            sound_type: The type of sound to get the path for
+
+        Returns:
+            Path object for the sound file
+
+        Raises:
+            KeyError: If the sound type is not found in assets
+        """
+        if sound_type not in self._assets:
+            raise KeyError(f"Unknown sound type: {sound_type}")
+        
+        return self.SOUND_DIR / self._assets[sound_type].filename
+
+    def get_sound_metadata(self, sound_type: SoundType) -> SoundAsset:
+        """
+        Get metadata for a sound asset.
+
+        Args:
+            sound_type: The type of sound to get metadata for
+
+        Returns:
+            SoundAsset containing the sound's metadata
+
+        Raises:
+            KeyError: If the sound type is not found in assets
+        """
+        if sound_type not in self._assets:
+            raise KeyError(f"Unknown sound type: {sound_type}")
+        
+        return self._assets[sound_type]
+
+    @property
+    def all_sound_types(self) -> list[SoundType]:
+        """Get a list of all available sound types."""
+        return list(self._assets.keys())
+
+# Create singleton instance
+sound_assets = SoundAssets()

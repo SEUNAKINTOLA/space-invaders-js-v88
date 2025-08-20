@@ -1,0 +1,150 @@
+"""
+Enemy sprite assets and configurations for Space Invaders game.
+
+This module provides sprite definitions, loading utilities, and animation frames
+for different types of enemy ships in the game.
+
+File: src/assets/sprites/enemies/enemy_sprites.py
+"""
+# TODO: Fix import - from dataclasses import dataclass
+# TODO: Fix import - from enum import Enum
+from pathlib import Path
+from typing import Dict, List, Tuple
+
+class EnemyType(Enum):
+    """Enumeration of available enemy types."""
+    BASIC = "basic"
+    SCOUT = "scout"
+    ELITE = "elite"
+    BOSS = "boss"
+
+@dataclass
+class SpriteFrame:
+    """Represents a single sprite animation frame."""
+    x: int
+    y: int
+    width: int
+    height: int
+    duration: float  # Duration in seconds
+
+@dataclass
+class EnemySprite:
+    """Configuration for enemy sprite animations and properties."""
+    type: EnemyType
+    frames: List[SpriteFrame]
+    hitbox: Tuple[int, int]  # Width, height of collision box
+    scale: float = 1.0
+    base_points: int = 10
+
+class EnemySpriteManager:
+    """Manager class for enemy sprite assets and configurations."""
+    
+    # Base directory for sprite assets
+    SPRITE_DIR = Path("src/assets/sprites/enemies")
+    
+    # Sprite sheet configurations
+    SPRITE_SHEET = {
+        EnemyType.BASIC: {
+            "file": "basic_enemy.png",
+            "frames": [
+                SpriteFrame(0, 0, 32, 32, 0.5),
+                SpriteFrame(32, 0, 32, 32, 0.5)
+            ],
+            "hitbox": (28, 28),
+            "scale": 1.0,
+            "points": 10
+        },
+        EnemyType.SCOUT: {
+            "file": "scout_enemy.png",
+            "frames": [
+                SpriteFrame(0, 0, 32, 32, 0.3),
+                SpriteFrame(32, 0, 32, 32, 0.3),
+                SpriteFrame(64, 0, 32, 32, 0.3)
+            ],
+            "hitbox": (24, 24),
+            "scale": 0.8,
+            "points": 20
+        },
+        EnemyType.ELITE: {
+            "file": "elite_enemy.png",
+            "frames": [
+                SpriteFrame(0, 0, 48, 48, 0.4),
+                SpriteFrame(48, 0, 48, 48, 0.4)
+            ],
+            "hitbox": (42, 42),
+            "scale": 1.2,
+            "points": 30
+        },
+        EnemyType.BOSS: {
+            "file": "boss_enemy.png",
+            "frames": [
+                SpriteFrame(0, 0, 64, 64, 0.6),
+                SpriteFrame(64, 0, 64, 64, 0.6),
+                SpriteFrame(128, 0, 64, 64, 0.6)
+            ],
+            "hitbox": (58, 58),
+            "scale": 1.5,
+            "points": 100
+        }
+    }
+
+    def __init__(self):
+        """Initialize the sprite manager."""
+        self._sprites: Dict[EnemyType, EnemySprite] = {}
+        self._load_sprites()
+
+    def _load_sprites(self) -> None:
+        """Load all sprite configurations into memory."""
+        try:
+            for enemy_type, config in self.SPRITE_SHEET.items():
+                self._sprites[enemy_type] = EnemySprite(
+                    type=enemy_type,
+                    frames=config["frames"],
+                    hitbox=config["hitbox"],
+                    scale=config["scale"],
+                    base_points=config["points"]
+                )
+        except Exception as e:
+            raise RuntimeError(f"Failed to load enemy sprites: {str(e)}")
+
+    def get_sprite(self, enemy_type: EnemyType) -> EnemySprite:
+        """
+        Get sprite configuration for the specified enemy type.
+
+        Args:
+            enemy_type: Type of enemy to get sprite for
+
+        Returns:
+            EnemySprite configuration for the specified type
+
+        Raises:
+            KeyError: If enemy_type is not found in sprite configurations
+        """
+        if enemy_type not in self._sprites:
+            raise KeyError(f"No sprite configuration found for enemy type: {enemy_type}")
+        return self._sprites[enemy_type]
+
+    def get_sprite_path(self, enemy_type: EnemyType) -> Path:
+        """
+        Get the file path for the sprite sheet of the specified enemy type.
+
+        Args:
+            enemy_type: Type of enemy to get sprite path for
+
+        Returns:
+            Path to the sprite sheet file
+
+        Raises:
+            KeyError: If enemy_type is not found in sprite configurations
+        """
+        if enemy_type not in self.SPRITE_SHEET:
+            raise KeyError(f"No sprite sheet found for enemy type: {enemy_type}")
+        return self.SPRITE_DIR / self.SPRITE_SHEET[enemy_type]["file"]
+
+    @property
+    def available_types(self) -> List[EnemyType]:
+        """Get list of all available enemy types."""
+        return list(self._sprites.keys())
+
+# Default instance for global use
+sprite_manager = EnemySpriteManager()

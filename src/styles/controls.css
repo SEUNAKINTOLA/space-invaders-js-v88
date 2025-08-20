@@ -1,0 +1,153 @@
+"""
+Touch Controls CSS Style Generator and Manager.
+
+This module provides functionality for generating and managing CSS styles
+for touch-based game controls in the Space Invaders game.
+
+Classes:
+    TouchControlStyles: Manages CSS styling for touch control elements
+"""
+
+from typing import Dict, Optional
+import logging
+
+logger = logging.getLogger(__name__)
+
+class TouchControlStyles:
+    """
+    Manages CSS styling for touch control elements.
+    
+    This class provides methods to generate and customize CSS styles
+    for touch-based game controls, ensuring consistent appearance and
+    proper touch interaction across devices.
+    """
+
+    def __init__(self):
+        """Initialize default style configurations for touch controls."""
+        self.base_styles = {
+            'touch-container': {
+                'position': 'absolute',
+                'bottom': '20px',
+                'width': '100%',
+                'display': 'flex',
+                'justify-content': 'space-between',
+                'padding': '10px',
+                'z-index': '1000'
+            },
+            'touch-button': {
+                'background': 'rgba(255, 255, 255, 0.2)',
+                'border': '2px solid rgba(255, 255, 255, 0.4)',
+                'border-radius': '50%',
+                'width': '60px',
+                'height': '60px',
+                'display': 'flex',
+                'align-items': 'center',
+                'justify-content': 'center',
+                'touch-action': 'none',
+                'user-select': 'none',
+                '-webkit-user-select': 'none',
+                '-webkit-tap-highlight-color': 'transparent'
+            },
+            'touch-button-active': {
+                'background': 'rgba(255, 255, 255, 0.4)',
+                'transform': 'scale(0.95)'
+            }
+        }
+        self.custom_styles: Dict[str, Dict[str, str]] = {}
+
+    def generate_css(self) -> str:
+        """
+        Generate CSS string from current style configurations.
+
+        Returns:
+            str: Complete CSS styling rules as a string
+        """
+        css_rules = []
+        
+        # Combine base and custom styles
+        all_styles = {**self.base_styles, **self.custom_styles}
+        
+        for selector, properties in all_styles.items():
+            css_rule = [f".{selector} {{"]
+            for prop, value in properties.items():
+                css_rule.append(f"    {prop}: {value};")
+            css_rule.append("}")
+            css_rules.append("\n".join(css_rule))
+        
+        return "\n\n".join(css_rules)
+
+    def add_custom_style(self, selector: str, properties: Dict[str, str]) -> None:
+        """
+        Add or update custom style rules.
+
+        Args:
+            selector (str): CSS selector name (without the dot)
+            properties (Dict[str, str]): Dictionary of CSS properties and values
+        """
+        try:
+            self.custom_styles[selector] = properties
+            logger.debug(f"Added custom style for selector: {selector}")
+        except Exception as e:
+            logger.error(f"Failed to add custom style for {selector}: {str(e)}")
+
+    def get_style_rules(self, selector: str) -> Optional[Dict[str, str]]:
+        """
+        Retrieve style rules for a specific selector.
+
+        Args:
+            selector (str): CSS selector name (without the dot)
+
+        Returns:
+            Optional[Dict[str, str]]: Dictionary of style properties or None if not found
+        """
+        return (
+            self.custom_styles.get(selector) or 
+            self.base_styles.get(selector)
+        )
+
+    def update_base_style(self, selector: str, properties: Dict[str, str]) -> bool:
+        """
+        Update properties of a base style selector.
+
+        Args:
+            selector (str): CSS selector name (without the dot)
+            properties (Dict[str, str]): Dictionary of CSS properties to update
+
+        Returns:
+            bool: True if update successful, False otherwise
+        """
+        if selector not in self.base_styles:
+            logger.warning(f"Attempted to update non-existent base style: {selector}")
+            return False
+
+        try:
+            self.base_styles[selector].update(properties)
+            logger.debug(f"Updated base style for selector: {selector}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update base style for {selector}: {str(e)}")
+            return False
+
+    def get_media_query_rules(self, max_width: int = 768) -> str:
+        """
+        Generate responsive media query rules for touch controls.
+
+        Args:
+            max_width (int): Maximum width breakpoint in pixels
+
+        Returns:
+            str: Media query CSS rules as a string
+        """
+        return f"""
+@media screen and (max-width: {max_width}px) {{
+    .touch-container {{
+        bottom: 10px;
+        padding: 5px;
+    }}
+    
+    .touch-button {{
+        width: 50px;
+        height: 50px;
+    }}
+}}
+"""

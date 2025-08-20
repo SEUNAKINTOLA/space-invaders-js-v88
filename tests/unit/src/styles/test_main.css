@@ -1,0 +1,144 @@
+"""
+Unit tests for src/styles/main.css styles validation.
+Tests CSS structure, rules, and properties for the Space Invaders game styles.
+"""
+
+# TODO: Fix import - import unittest
+import os
+import re
+from typing import Dict, List, Tuple
+
+class CSSParser:
+    """Parser for CSS files to extract and validate rules."""
+    
+    @staticmethod
+    def parse_css_file(file_path: str) -> Dict[str, Dict[str, str]]:
+        """
+        Parse CSS file and return dictionary of selectors and their properties.
+        
+        Args:
+            file_path: Path to the CSS file
+            
+        Returns:
+            Dictionary mapping selectors to their property-value pairs
+        
+        Raises:
+            FileNotFoundError: If CSS file doesn't exist
+            ValueError: If CSS syntax is invalid
+        """
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"CSS file not found: {file_path}")
+            
+        with open(file_path, 'r') as f:
+            css_content = f.read()
+            
+        # Remove comments
+        css_content = re.sub(r'/\*.*?\*/', '', css_content, flags=re.DOTALL)
+        
+        # Parse rules
+        rules = {}
+        rule_pattern = r'([^{]+){([^}]+)}'
+        matches = re.finditer(rule_pattern, css_content)
+        
+        for match in matches:
+            selector = match.group(1).strip()
+            properties_str = match.group(2).strip()
+            
+            # Parse properties
+            properties = {}
+            for prop in properties_str.split(';'):
+                prop = prop.strip()
+                if prop:
+                    try:
+                        key, value = prop.split(':', 1)
+                        properties[key.strip()] = value.strip()
+                    except ValueError:
+                        raise ValueError(f"Invalid CSS property format: {prop}")
+                        
+            rules[selector] = properties
+            
+        return rules
+
+class TestMainCSS(unittest.TestCase):
+    """Test suite for main.css styles validation."""
+    
+    @classmethod
+    def setUpClass(cls):
+        """Set up test class with CSS file path and parsed rules."""
+        cls.css_file_path = "src/styles/main.css"
+        cls.parser = CSSParser()
+        try:
+            cls.css_rules = cls.parser.parse_css_file(cls.css_file_path)
+        except FileNotFoundError:
+            cls.css_rules = {}  # Allow tests to run even if file doesn't exist yet
+    
+    def test_body_styles(self):
+        """Test body element styles."""
+        body_rules = self.css_rules.get('body', {})
+        
+        self.assertIn('margin', body_rules, "Body should have margin property")
+        self.assertEqual(body_rules.get('margin'), '0', "Body margin should be 0")
+        
+        self.assertIn('overflow', body_rules, "Body should have overflow property")
+        self.assertEqual(body_rules.get('overflow'), 'hidden', 
+                        "Body overflow should be hidden")
+    
+    def test_canvas_styles(self):
+        """Test canvas element styles."""
+        canvas_rules = self.css_rules.get('canvas', {})
+        
+        self.assertIn('display', canvas_rules, "Canvas should have display property")
+        self.assertEqual(canvas_rules.get('display'), 'block',
+                        "Canvas display should be block")
+    
+    def test_game_container_styles(self):
+        """Test game container styles."""
+        container_rules = self.css_rules.get('.game-container', {})
+        
+        self.assertIn('position', container_rules,
+                     "Game container should have position property")
+        self.assertEqual(container_rules.get('position'), 'relative',
+                        "Game container position should be relative")
+        
+        self.assertIn('width', container_rules,
+                     "Game container should have width property")
+        self.assertIn('height', container_rules,
+                     "Game container should have height property")
+    
+    def test_responsive_layout(self):
+        """Test responsive layout media queries."""
+        media_queries = [key for key in self.css_rules.keys() 
+                        if key.startswith('@media')]
+        
+        self.assertTrue(any(media_queries),
+                       "Should have at least one media query for responsiveness")
+    
+    def test_valid_color_values(self):
+        """Test that all color values are valid."""
+        color_pattern = r'^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})|rgb\(.*\)|rgba\(.*\)$'
+        
+        for selector, properties in self.css_rules.items():
+            for prop, value in properties.items():
+                if any(color_prop in prop for color_prop in ['color', 'background']):
+                    if not value.startswith('var('):  # Skip CSS variables
+                        self.assertTrue(
+                            re.match(color_pattern, value),
+                            f"Invalid color value in {selector} - {prop}: {value}"
+                        )
+    
+    def test_valid_units(self):
+        """Test that size units are valid."""
+        valid_units = ['px', 'em', 'rem', '%', 'vh', 'vw']
+        size_properties = ['width', 'height', 'margin', 'padding', 'font-size']
+        
+        for selector, properties in self.css_rules.items():
+            for prop, value in properties.items():
+                if any(size_prop in prop for size_prop in size_properties):
+                    if value != '0':  # Skip zero values
+                        self.assertTrue(
+                            any(value.endswith(unit) for unit in valid_units),
+                            f"Invalid unit in {selector} - {prop}: {value}"
+                        )
+
+if __name__ == '__main__':
+    unittest.main()

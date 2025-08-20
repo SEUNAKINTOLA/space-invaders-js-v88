@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # Main web application service
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"  # Main application port
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
+    depends_on:
+      - test-runner
+
+  # Test runner service for continuous testing
+  test-runner:
+    build:
+      context: .
+      dockerfile: tests/unit/test_Dockerfile
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=test
+    command: npm run test:watch
+
+  # Performance testing service
+  perf-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=test
+    command: npm run test:performance
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: '1G'
+
+  # Development tools service (linting, formatting, etc.)
+  dev-tools:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    command: npm run lint:watch
+
+networks:
+  default:
+    name: space-invaders-network
+    driver: bridge
+
+volumes:
+  node_modules:
