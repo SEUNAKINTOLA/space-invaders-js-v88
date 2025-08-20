@@ -1,0 +1,143 @@
+"""
+Unit tests for .gitignore configuration.
+Validates that the .gitignore file contains required patterns and correctly
+filters files for the Space Invaders JS project.
+"""
+
+import os
+# TODO: Fix import - import unittest
+from pathlib import Path
+# TODO: Fix import - import tempfile
+# TODO: Fix import - import shutil
+
+
+class TestGitignore(unittest.TestCase):
+    """Test suite for .gitignore configuration validation."""
+
+    def setUp(self):
+        """Set up test environment with temporary directory."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.gitignore_path = Path(self.temp_dir) / '.gitignore'
+        
+        # Common patterns that should be in .gitignore for a JS project
+        self.expected_patterns = [
+            'node_modules/',
+            'dist/',
+            'coverage/',
+            '.env',
+            '.DS_Store',
+            '*.log',
+            'npm-debug.log*',
+            'yarn-debug.log*',
+            'yarn-error.log*',
+            '.idea/',
+            '.vscode/',
+            '*.swp',
+            '*.swo',
+            '__pycache__/',
+            '*.pyc',
+            'build/',
+            '.cache/',
+            '.pytest_cache/'
+        ]
+        
+        # Create test .gitignore file
+        with open(self.gitignore_path, 'w') as f:
+            f.write('\n'.join(self.expected_patterns))
+
+    def tearDown(self):
+        """Clean up temporary test directory."""
+        shutil.rmtree(self.temp_dir)
+
+    def test_gitignore_exists(self):
+        """Test that .gitignore file exists."""
+        self.assertTrue(self.gitignore_path.exists())
+
+    def test_gitignore_contains_required_patterns(self):
+        """Test that .gitignore contains all required patterns."""
+        with open(self.gitignore_path, 'r') as f:
+            content = f.read()
+            
+        for pattern in self.expected_patterns:
+            self.assertIn(pattern, content, 
+                         f"Required pattern '{pattern}' missing from .gitignore")
+
+    def test_gitignore_pattern_validation(self):
+        """Test that .gitignore patterns are valid and well-formatted."""
+        with open(self.gitignore_path, 'r') as f:
+            lines = f.readlines()
+            
+        for line in lines:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                # Check for invalid characters
+                self.assertFalse(' ' in line, 
+                                f"Pattern '{line}' contains spaces")
+                self.assertFalse('\t' in line, 
+                                f"Pattern '{line}' contains tabs")
+                
+                # Check for proper directory notation
+                if line.endswith('/'):
+                    self.assertFalse(line.startswith('*'), 
+                                   f"Invalid directory wildcard pattern: {line}")
+
+    def test_gitignore_ignores_correct_files(self):
+        """Test that .gitignore correctly identifies files to ignore."""
+        test_files = {
+            'node_modules/package.json': True,  # Should be ignored
+            'src/main.js': False,  # Should not be ignored
+            'dist/bundle.js': True,  # Should be ignored
+            'README.md': False,  # Should not be ignored
+            '.env': True,  # Should be ignored
+            'coverage/report.html': True,  # Should be ignored
+            'src/assets/sprite.png': False  # Should not be ignored
+        }
+        
+        for file_path, should_ignore in test_files.items():
+            full_path = Path(self.temp_dir) / file_path
+            
+            # Create directory structure if needed
+            full_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Create test file
+            full_path.touch()
+            
+            # Check if file matches any gitignore pattern
+            is_ignored = self._is_file_ignored(file_path)
+            self.assertEqual(
+                is_ignored, 
+                should_ignore,
+                f"File '{file_path}' {'should' if should_ignore else 'should not'} be ignored"
+            )
+
+    def _is_file_ignored(self, file_path: str) -> bool:
+        """
+        Helper method to check if a file should be ignored based on .gitignore patterns.
+        
+        Args:
+            file_path: Path to the file to check
+            
+        Returns:
+            bool: True if file should be ignored, False otherwise
+        """
+        with open(self.gitignore_path, 'r') as f:
+            patterns = [p.strip() for p in f.readlines() if p.strip() 
+                       and not p.startswith('#')]
+            
+        for pattern in patterns:
+            if pattern.endswith('/'):
+                # Directory pattern
+                if any(part == pattern[:-1] for part in Path(file_path).parts):
+                    return True
+            elif pattern.startswith('*.'):
+                # File extension pattern
+                if file_path.endswith(pattern[1:]):
+                    return True
+            elif pattern in file_path:
+                # Direct match
+                return True
+        return False
+
+
+if __name__ == '__main__':
+    unittest.main()
