@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Space Invaders V88</title>
+    
+    <!-- Security headers -->
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self'; script-src 'self'; style-src 'self'">
+    
+    <!-- Preload game assets -->
+    <link rel="preload" href="styles/main.css" as="style">
+    <link rel="preload" href="engine/GameEngine.js" as="script">
+    <link rel="preload" href="engine/Renderer.js" as="script">
+    <link rel="preload" href="engine/GameObject.js" as="script">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <!-- Game container -->
+    <div id="game-container">
+        <!-- Main game canvas -->
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- Game UI overlay -->
+        <div id="game-ui">
+            <div id="score">Score: <span id="score-value">0</span></div>
+            <div id="lives">Lives: <span id="lives-value">3</span></div>
+            <div id="wave">Wave: <span id="wave-value">1</span></div>
+        </div>
+
+        <!-- Game menu -->
+        <div id="game-menu" class="hidden">
+            <h1>Space Invaders</h1>
+            <button id="start-game">Start Game</button>
+            <button id="high-scores">High Scores</button>
+            <button id="settings">Settings</button>
+        </div>
+
+        <!-- Pause menu -->
+        <div id="pause-menu" class="hidden">
+            <h2>Game Paused</h2>
+            <button id="resume-game">Resume</button>
+            <button id="quit-game">Quit to Menu</button>
+        </div>
+
+        <!-- Game over screen -->
+        <div id="game-over" class="hidden">
+            <h2>Game Over</h2>
+            <div id="final-score">Final Score: <span id="final-score-value">0</span></div>
+            <button id="play-again">Play Again</button>
+            <button id="return-menu">Return to Menu</button>
+        </div>
+    </div>
+
+    <!-- Loading screen -->
+    <div id="loading-screen">
+        <div class="loader"></div>
+        <div id="loading-text">Loading game assets...</div>
+    </div>
+
+    <!-- Error message container -->
+    <div id="error-message" class="hidden">
+        <p>An error occurred. Please refresh the page.</p>
+    </div>
+
+    <!-- Game scripts -->
+    <script type="module" src="engine/GameEngine.js"></script>
+    <script type="module" src="engine/Renderer.js"></script>
+    <script type="module" src="engine/GameObject.js"></script>
+    <script type="module" src="patterns/EnemyPatterns.js"></script>
+    <script type="module" src="systems/WaveManager.js"></script>
+    <script type="module" src="entities/Enemy.js"></script>
+
+    <!-- Initialize game -->
+    <script type="module">
+        window.addEventListener('load', async () => {
+            try {
+                // Hide loading screen when all assets are loaded
+                const loadingScreen = document.getElementById('loading-screen');
+                loadingScreen.style.display = 'none';
+
+                // Initialize game engine
+                const canvas = document.getElementById('gameCanvas');
+                const gameEngine = new GameEngine(canvas);
+                await gameEngine.initialize();
+
+                // Setup event listeners
+                document.getElementById('start-game').addEventListener('click', () => {
+                    document.getElementById('game-menu').classList.add('hidden');
+                    gameEngine.startGame();
+                });
+
+                // Show main menu
+                document.getElementById('game-menu').classList.remove('hidden');
+            } catch (error) {
+                console.error('Game initialization failed:', error);
+                document.getElementById('error-message').classList.remove('hidden');
+            }
+        });
+    </script>
+</head>
+</body>
+</html>
