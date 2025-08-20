@@ -1,0 +1,91 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run ESLint
+      run: npm run lint
+      
+    - name: Run unit tests
+      run: npm run test:unit
+      
+    - name: Run integration tests  
+      run: npm run test:integration
+
+    - name: Run performance tests
+      run: |
+        npm run test:performance
+        node tests/performance/rendering.test.js --threshold=60
+      env:
+        PERFORMANCE_THRESHOLD_FPS: 60
+        PERFORMANCE_THRESHOLD_RENDER_TIME: 16.67
+
+    - name: Generate performance report
+      if: always()
+      run: |
+        echo "### Performance Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "- Average FPS: $(cat performance-results.json | jq .avgFps)" >> $GITHUB_STEP_SUMMARY
+        echo "- Average render time: $(cat performance-results.json | jq .avgRenderTime)ms" >> $GITHUB_STEP_SUMMARY
+        echo "- Frame time consistency: $(cat performance-results.json | jq .frameTimeConsistency)%" >> $GITHUB_STEP_SUMMARY
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build production bundle
+      run: npm run build
+      
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: dist
+        path: dist/
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: dist
+        path: dist/
+        
+    - name: Deploy to production
+      run: |
+        # Add deployment steps here
+        echo "Deploying to production..."
