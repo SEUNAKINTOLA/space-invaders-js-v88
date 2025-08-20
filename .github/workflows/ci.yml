@@ -1,0 +1,110 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x]
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run linting
+      run: npm run lint
+      
+    - name: Run unit tests
+      run: npm run test:unit
+      
+    - name: Run integration tests
+      run: npm run test:integration
+
+    - name: Run performance tests
+      run: |
+        npm run test:performance
+      env:
+        COLLISION_BENCHMARK_ITERATIONS: 1000
+        COLLISION_OBJECT_COUNT: 1000
+        
+    - name: Generate performance report
+      if: always()
+      run: |
+        echo "### Performance Test Results" >> $GITHUB_STEP_SUMMARY
+        cat performance-results.json >> $GITHUB_STEP_SUMMARY
+
+  benchmark:
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run collision system benchmarks
+      run: |
+        npm run benchmark:collision
+      env:
+        BENCHMARK_SAMPLES: 100
+        BENCHMARK_ITERATIONS: 5000
+        
+    - name: Store benchmark results
+      uses: actions/upload-artifact@v3
+      with:
+        name: benchmark-results
+        path: benchmark-results/
+        retention-days: 90
+
+    - name: Compare with baseline
+      run: |
+        node scripts/compare-benchmarks.js
+      continue-on-error: true
+
+  build:
+    needs: [test, benchmark]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build
+      run: npm run build
+      
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: dist
+        path: dist/
+        retention-days: 30
