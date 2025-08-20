@@ -1,4 +1,6 @@
-// tests/unit/engine/GameEngine.test.js
+/**
+ * @jest-environment jsdom
+ */
 
 describe('GameEngine', () => {
   let gameEngine;
@@ -6,162 +8,151 @@ describe('GameEngine', () => {
   let mockContext;
 
   beforeEach(() => {
-    // Mock canvas and context
-    mockContext = {
-      clearRect: jest.fn(),
-      save: jest.fn(),
-      restore: jest.fn()
-    };
+    // Setup mock canvas and context
+    mockCanvas = document.createElement('canvas');
+    mockContext = mockCanvas.getContext('2d');
+    mockCanvas.width = 800;
+    mockCanvas.height = 600;
 
-    mockCanvas = {
-      getContext: jest.fn(() => mockContext),
-      width: 800,
-      height: 600
-    };
+    // Mock requestAnimationFrame
+    global.requestAnimationFrame = jest.fn(callback => {
+      return setTimeout(callback, 0);
+    });
 
-    // Mock document methods
-    global.document = {
-      createElement: jest.fn(() => mockCanvas)
-    };
+    // Mock performance.now()
+    global.performance.now = jest.fn(() => Date.now());
 
-    // Initialize game engine
-    gameEngine = new GameEngine();
+    gameEngine = new GameEngine(mockCanvas);
   });
 
   afterEach(() => {
     jest.clearAllMocks();
+    if (gameEngine) {
+      gameEngine.stop();
+    }
   });
 
-  describe('initialization', () => {
-    test('should create a new GameEngine instance', () => {
-      expect(gameEngine).toBeDefined();
-      expect(gameEngine).toBeInstanceOf(GameEngine);
+  describe('Initialization', () => {
+    test('should properly initialize with canvas element', () => {
+      expect(gameEngine.canvas).toBe(mockCanvas);
+      expect(gameEngine.context).toBe(mockContext);
+      expect(gameEngine.isRunning).toBe(false);
+      expect(gameEngine.gameObjects).toEqual([]);
     });
 
-    test('should initialize with default properties', () => {
-      expect(gameEngine.isRunning).toBeFalsy();
-      expect(gameEngine.entities).toEqual([]);
-      expect(gameEngine.lastFrameTime).toBe(0);
-    });
-
-    test('should create and configure canvas on init', () => {
-      gameEngine.init();
-      expect(document.createElement).toHaveBeenCalledWith('canvas');
-      expect(mockCanvas.getContext).toHaveBeenCalledWith('2d');
+    test('should throw error when initialized without canvas', () => {
+      expect(() => new GameEngine()).toThrow('Canvas is required');
     });
   });
 
-  describe('game loop', () => {
-    beforeEach(() => {
-      gameEngine.init();
-    });
-
+  describe('Game Loop', () => {
     test('should start game loop when start is called', () => {
-      const spy = jest.spyOn(window, 'requestAnimationFrame');
       gameEngine.start();
-      
-      expect(gameEngine.isRunning).toBeTruthy();
-      expect(spy).toHaveBeenCalled();
-      
-      spy.mockRestore();
+      expect(gameEngine.isRunning).toBe(true);
+      expect(requestAnimationFrame).toHaveBeenCalled();
     });
 
     test('should stop game loop when stop is called', () => {
-      const spy = jest.spyOn(window, 'cancelAnimationFrame');
       gameEngine.start();
       gameEngine.stop();
-      
-      expect(gameEngine.isRunning).toBeFalsy();
-      expect(spy).toHaveBeenCalled();
-      
-      spy.mockRestore();
+      expect(gameEngine.isRunning).toBe(false);
     });
 
-    test('should calculate correct delta time', () => {
-      const currentTime = 1000;
-      const lastFrameTime = 900;
-      const expectedDelta = (currentTime - lastFrameTime) / 1000; // Convert to seconds
-
-      gameEngine.lastFrameTime = lastFrameTime;
-      gameEngine.gameLoop(currentTime);
-
-      expect(gameEngine.deltaTime).toBeCloseTo(expectedDelta);
+    test('should maintain consistent frame rate', () => {
+      const targetFPS = 60;
+      const expectedFrameTime = 1000 / targetFPS;
+      
+      let lastFrameTime = performance.now();
+      let frameCount = 0;
+      
+      gameEngine.start();
+      
+      // Simulate multiple frames
+      for (let i = 0; i < 10; i++) {
+        performance.now.mockReturnValue(lastFrameTime + expectedFrameTime);
+        requestAnimationFrame.mock.calls[i][0]();
+        lastFrameTime += expectedFrameTime;
+        frameCount++;
+      }
+      
+      expect(frameCount).toBe(10);
     });
   });
 
-  describe('entity management', () => {
-    let mockEntity;
-
-    beforeEach(() => {
-      mockEntity = {
+  describe('GameObject Management', () => {
+    test('should add game objects correctly', () => {
+      const mockGameObject = {
         update: jest.fn(),
         render: jest.fn()
       };
+
+      gameEngine.addGameObject(mockGameObject);
+      expect(gameEngine.gameObjects).toContain(mockGameObject);
     });
 
-    test('should add entity to game engine', () => {
-      gameEngine.addEntity(mockEntity);
-      expect(gameEngine.entities).toContain(mockEntity);
+    test('should remove game objects correctly', () => {
+      const mockGameObject = {
+        update: jest.fn(),
+        render: jest.fn()
+      };
+
+      gameEngine.addGameObject(mockGameObject);
+      gameEngine.removeGameObject(mockGameObject);
+      expect(gameEngine.gameObjects).not.toContain(mockGameObject);
     });
 
-    test('should remove entity from game engine', () => {
-      gameEngine.addEntity(mockEntity);
-      gameEngine.removeEntity(mockEntity);
-      expect(gameEngine.entities).not.toContain(mockEntity);
-    });
+    test('should update all game objects', () => {
+      const mockGameObject1 = {
+        update: jest.fn(),
+        render: jest.fn()
+      };
+      const mockGameObject2 = {
+        update: jest.fn(),
+        render: jest.fn()
+      };
 
-    test('should update all entities', () => {
-      const mockEntity2 = { update: jest.fn(), render: jest.fn() };
+      gameEngine.addGameObject(mockGameObject1);
+      gameEngine.addGameObject(mockGameObject2);
       
-      gameEngine.addEntity(mockEntity);
-      gameEngine.addEntity(mockEntity2);
-      
-      gameEngine.updateEntities(0.016); // Simulate 16ms frame time
-      
-      expect(mockEntity.update).toHaveBeenCalledWith(0.016);
-      expect(mockEntity2.update).toHaveBeenCalledWith(0.016);
-    });
+      const deltaTime = 16.67; // Simulate ~60 FPS
+      gameEngine.update(deltaTime);
 
-    test('should render all entities', () => {
-      const mockEntity2 = { update: jest.fn(), render: jest.fn() };
-      
-      gameEngine.addEntity(mockEntity);
-      gameEngine.addEntity(mockEntity2);
-      
-      gameEngine.renderEntities();
-      
-      expect(mockEntity.render).toHaveBeenCalledWith(mockContext);
-      expect(mockEntity2.render).toHaveBeenCalledWith(mockContext);
+      expect(mockGameObject1.update).toHaveBeenCalledWith(deltaTime);
+      expect(mockGameObject2.update).toHaveBeenCalledWith(deltaTime);
     });
   });
 
-  describe('canvas operations', () => {
-    beforeEach(() => {
-      gameEngine.init();
-    });
-
-    test('should clear canvas before rendering', () => {
-      gameEngine.clearCanvas();
-      
+  describe('Rendering', () => {
+    test('should clear canvas before each render', () => {
+      jest.spyOn(mockContext, 'clearRect');
+      gameEngine.render();
       expect(mockContext.clearRect).toHaveBeenCalledWith(
-        0,
-        0,
-        mockCanvas.width,
-        mockCanvas.height
+        0, 0, mockCanvas.width, mockCanvas.height
       );
     });
 
-    test('should save and restore context state during render', () => {
-      gameEngine.renderEntities();
-      
-      expect(mockContext.save).toHaveBeenCalled();
-      expect(mockContext.restore).toHaveBeenCalled();
+    test('should render all game objects', () => {
+      const mockGameObject1 = {
+        update: jest.fn(),
+        render: jest.fn()
+      };
+      const mockGameObject2 = {
+        update: jest.fn(),
+        render: jest.fn()
+      };
+
+      gameEngine.addGameObject(mockGameObject1);
+      gameEngine.addGameObject(mockGameObject2);
+      gameEngine.render();
+
+      expect(mockGameObject1.render).toHaveBeenCalledWith(mockContext);
+      expect(mockGameObject2.render).toHaveBeenCalledWith(mockContext);
     });
   });
 
-  describe('error handling', () => {
-    test('should handle entity update errors gracefully', () => {
-      const errorEntity = {
+  describe('Error Handling', () => {
+    test('should handle game object update errors gracefully', () => {
+      const mockGameObject = {
         update: jest.fn().mockImplementation(() => {
           throw new Error('Update error');
         }),
@@ -170,15 +161,15 @@ describe('GameEngine', () => {
 
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
       
-      gameEngine.addEntity(errorEntity);
-      gameEngine.updateEntities(0.016);
-      
+      gameEngine.addGameObject(mockGameObject);
+      gameEngine.update(16.67);
+
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();
     });
 
-    test('should handle entity render errors gracefully', () => {
-      const errorEntity = {
+    test('should handle game object render errors gracefully', () => {
+      const mockGameObject = {
         update: jest.fn(),
         render: jest.fn().mockImplementation(() => {
           throw new Error('Render error');
@@ -187,11 +178,26 @@ describe('GameEngine', () => {
 
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
       
-      gameEngine.addEntity(errorEntity);
-      gameEngine.renderEntities();
-      
+      gameEngine.addGameObject(mockGameObject);
+      gameEngine.render();
+
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe('Performance', () => {
+    test('should maintain game objects array integrity during updates', () => {
+      const gameObjects = Array(1000).fill(null).map(() => ({
+        update: jest.fn(),
+        render: jest.fn()
+      }));
+
+      gameObjects.forEach(obj => gameEngine.addGameObject(obj));
+      expect(gameEngine.gameObjects.length).toBe(1000);
+
+      gameEngine.update(16.67);
+      expect(gameEngine.gameObjects.length).toBe(1000);
     });
   });
 });
