@@ -1,0 +1,147 @@
+"""
+Unit tests for src/index.html file structure and content validation.
+
+This module contains tests to verify the integrity and correctness of the main
+index.html file for the Space Invaders JS V88 project.
+"""
+
+# TODO: Fix import - import unittest
+from pathlib import Path
+import re
+from typing import List, Optional
+# TODO: Fix import - from bs4 import BeautifulSoup
+import os
+
+
+class TestIndexHTML(unittest.TestCase):
+    """Test suite for validating the index.html file structure and content."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        """Set up test fixtures before running tests."""
+        # Get the project root directory
+        cls.project_root = Path(__file__).parent.parent.parent.parent
+        cls.index_path = cls.project_root / 'src' / 'index.html'
+        
+        # Read the index.html content
+        try:
+            with open(cls.index_path, 'r', encoding='utf-8') as file:
+                cls.html_content = file.read()
+                cls.soup = BeautifulSoup(cls.html_content, 'html.parser')
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Could not find index.html at {cls.index_path}")
+
+    def test_file_exists(self) -> None:
+        """Verify that index.html exists in the correct location."""
+        self.assertTrue(self.index_path.exists(), "index.html file not found")
+        self.assertTrue(self.index_path.is_file(), "index.html is not a file")
+
+    def test_basic_structure(self) -> None:
+        """Test if the HTML file has all required basic elements."""
+        # Check doctype
+        self.assertTrue(self.html_content.strip().startswith('<!DOCTYPE html>'),
+                       "Missing DOCTYPE declaration")
+        
+        # Check essential tags
+        self.assertIsNotNone(self.soup.html, "Missing <html> tag")
+        self.assertIsNotNone(self.soup.head, "Missing <head> tag")
+        self.assertIsNotNone(self.soup.body, "Missing <body> tag")
+        
+        # Check html lang attribute
+        self.assertIsNotNone(self.soup.html.get('lang'), 
+                            "Missing lang attribute in <html> tag")
+
+    def test_meta_tags(self) -> None:
+        """Verify presence and correctness of essential meta tags."""
+        meta_tags = self.soup.find_all('meta')
+        
+        # Required meta tags
+        required_meta = {
+            'charset': 'utf-8',
+            'viewport': 'width=device-width, initial-scale=1.0',
+        }
+        
+        found_meta = {
+            meta.get('charset'): meta.get('charset') 
+            for meta in meta_tags if meta.get('charset')
+        }
+        found_meta.update({
+            'viewport': meta.get('content') 
+            for meta in meta_tags 
+            if meta.get('name') == 'viewport'
+        })
+        
+        for key, value in required_meta.items():
+            self.assertIn(key, found_meta, f"Missing meta tag: {key}")
+            if value:
+                self.assertEqual(found_meta[key], value, 
+                               f"Incorrect meta tag value for {key}")
+
+    def test_title_tag(self) -> None:
+        """Check if title tag exists and contains appropriate content."""
+        title = self.soup.title
+        self.assertIsNotNone(title, "Missing <title> tag")
+        self.assertGreater(len(title.string or ''), 0, "Title tag is empty")
+        self.assertIn("Space Invaders", title.string, 
+                     "Title should contain 'Space Invaders'")
+
+    def test_stylesheet_links(self) -> None:
+        """Verify CSS stylesheet links are properly included."""
+        css_links = self.soup.find_all('link', rel='stylesheet')
+        
+        # Check for main.css
+        main_css_found = any(
+            'main.css' in link.get('href', '') for link in css_links
+        )
+        self.assertTrue(main_css_found, "main.css stylesheet not linked")
+
+    def test_script_tags(self) -> None:
+        """Test if necessary JavaScript files are properly included."""
+        scripts = self.soup.find_all('script')
+        
+        # Check for main game script
+        main_script_found = any(
+            'index.js' in script.get('src', '') for script in scripts
+        )
+        self.assertTrue(main_script_found, "Main game script (index.js) not included")
+
+    def test_canvas_element(self) -> None:
+        """Verify game canvas element exists with correct attributes."""
+        canvas = self.soup.find('canvas')
+        self.assertIsNotNone(canvas, "Missing canvas element")
+        
+        # Check canvas attributes
+        self.assertIsNotNone(canvas.get('id'), "Canvas missing id attribute")
+        self.assertIsNotNone(canvas.get('width'), "Canvas missing width attribute")
+        self.assertIsNotNone(canvas.get('height'), "Canvas missing height attribute")
+
+    def test_semantic_structure(self) -> None:
+        """Test if the HTML uses proper semantic elements."""
+        semantic_elements = ['header', 'main', 'footer']
+        for element in semantic_elements:
+            self.assertIsNotNone(
+                self.soup.find(element), 
+                f"Missing semantic element: <{element}>"
+            )
+
+    def test_accessibility(self) -> None:
+        """Test basic accessibility requirements."""
+        # Check for ARIA labels on interactive elements
+        interactive_elements = self.soup.find_all(['button', 'a', 'input'])
+        for element in interactive_elements:
+            self.assertTrue(
+                element.get('aria-label') or element.string,
+                f"Interactive element missing accessible name: {element}"
+            )
+
+    def test_content_security(self) -> None:
+        """Verify Content Security Policy meta tag exists."""
+        csp_meta = self.soup.find(
+            'meta', 
+            attrs={'http-equiv': 'Content-Security-Policy'}
+        )
+        self.assertIsNotNone(csp_meta, "Missing Content Security Policy meta tag")
+
+
+if __name__ == '__main__':
+    unittest.main()
