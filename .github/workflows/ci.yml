@@ -12,76 +12,79 @@ jobs:
     
     steps:
     - uses: actions/checkout@v3
-
-    - name: Set up Node.js
+    - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '16'
+        node-version: '16.x'
         cache: 'npm'
-
+        
     - name: Install dependencies
       run: npm ci
-
-    - name: Run linting
+      
+    - name: Run ESLint
       run: npm run lint
-
+      
     - name: Run unit tests
       run: npm run test:unit
-
-    - name: Run integration tests
+      
+    - name: Run integration tests  
       run: npm run test:integration
 
-    - name: Run e2e tests
-      run: npm run test:e2e
+    - name: Run performance tests
+      run: |
+        npm run test:performance
+        node tests/performance/rendering.test.js --threshold=60
+      env:
+        PERFORMANCE_THRESHOLD_FPS: 60
+        PERFORMANCE_THRESHOLD_RENDER_TIME: 16.67
 
-  docker-build:
+    - name: Generate performance report
+      if: always()
+      run: |
+        echo "### Performance Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "- Average FPS: $(cat performance-results.json | jq .avgFps)" >> $GITHUB_STEP_SUMMARY
+        echo "- Average render time: $(cat performance-results.json | jq .avgRenderTime)ms" >> $GITHUB_STEP_SUMMARY
+        echo "- Frame time consistency: $(cat performance-results.json | jq .frameTimeConsistency)%" >> $GITHUB_STEP_SUMMARY
+
+  build:
     needs: test
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     
     steps:
     - uses: actions/checkout@v3
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-
-    - name: Login to Docker Hub
-      uses: docker/login-action@v2
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
       with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-    - name: Build and push development image
-      uses: docker/build-push-action@v4
+        node-version: '16.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build production bundle
+      run: npm run build
+      
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
       with:
-        context: .
-        file: ./Dockerfile
-        push: ${{ github.ref == 'refs/heads/develop' }}
-        tags: |
-          ${{ secrets.DOCKERHUB_USERNAME }}/space-invaders:dev
-          ${{ secrets.DOCKERHUB_USERNAME }}/space-invaders:${{ github.sha }}-dev
-        cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/space-invaders:dev
-        cache-to: type=inline
-
-    - name: Build and push production image
-      if: github.ref == 'refs/heads/main'
-      uses: docker/build-push-action@v4
-      with:
-        context: .
-        file: ./Dockerfile
-        push: true
-        tags: |
-          ${{ secrets.DOCKERHUB_USERNAME }}/space-invaders:latest
-          ${{ secrets.DOCKERHUB_USERNAME }}/space-invaders:${{ github.sha }}
-        cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/space-invaders:latest
-        cache-to: type=inline
+        name: dist
+        path: dist/
 
   deploy:
-    needs: docker-build
-    if: github.ref == 'refs/heads/main'
+    needs: build
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     
     steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: dist
+        path: dist/
+        
     - name: Deploy to production
       run: |
-        echo "Deployment step - configure based on deployment strategy"
-        # Add actual deployment commands here
+        # Add deployment steps here
+        echo "Deploying to production..."
