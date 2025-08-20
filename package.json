@@ -1,0 +1,85 @@
+{
+  "name": "space-invaders-js-v88",
+  "version": "1.0.0",
+  "description": "A modern implementation of the classic Space Invaders game using JavaScript",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "webpack serve --mode development --open",
+    "build": "webpack --mode production",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:e2e": "python tests/e2e/test_df3c4a4e-0651-49a2-b344-29824258a46e_complete.py",
+    "test:perf": "python tests/performance/benchmark_df3c4a4e-0651-49a2-b344-29824258a46e.py",
+    "lint": "eslint src/**/*.js tests/**/*.js",
+    "format": "prettier --write \"src/**/*.{js,css,html}\" \"tests/**/*.js\"",
+    "prepare": "husky install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/space-invaders-js-v88.git"
+  },
+  "keywords": [
+    "game",
+    "space-invaders",
+    "javascript",
+    "html5",
+    "canvas"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "core-js": "^3.30.0",
+    "regenerator-runtime": "^0.13.11"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.21.4",
+    "@babel/preset-env": "^7.21.4",
+    "@testing-library/jest-dom": "^5.16.5",
+    "babel-jest": "^29.5.0",
+    "babel-loader": "^9.1.2",
+    "css-loader": "^6.7.3",
+    "eslint": "^8.38.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-jest": "^27.2.1",
+    "html-webpack-plugin": "^5.5.0",
+    "husky": "^8.0.3",
+    "jest": "^29.5.0",
+    "jest-environment-jsdom": "^29.5.0",
+    "lint-staged": "^13.2.1",
+    "prettier": "^2.8.7",
+    "style-loader": "^3.3.2",
+    "webpack": "^5.79.0",
+    "webpack-cli": "^5.0.1",
+    "webpack-dev-server": "^4.13.2"
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{css,html}": [
+      "prettier --write"
+    ]
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "moduleNameMapper": {
+      "\\.(css|less|sass|scss)$": "<rootDir>/tests/mocks/styleMock.js",
+      "\\.(gif|ttf|eot|svg|png)$": "<rootDir>/tests/mocks/fileMock.js"
+    },
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.js"
+    ]
+  },
+  "browserslist": [
+    ">0.2%",
+    "not dead",
+    "not ie <= 11",
+    "not op_mini all"
+  ],
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  }
+}
