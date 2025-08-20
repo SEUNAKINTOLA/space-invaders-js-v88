@@ -1,96 +1,77 @@
 /**
- * @fileoverview Core Game Engine implementation for Space Invaders JS V88
- * Handles game loop, state management, and canvas rendering coordination
+ * @fileoverview Core Game Engine implementation providing game loop and canvas rendering
+ * @module GameEngine
  */
 
 /**
- * Represents the core game engine that manages the game loop and state
+ * Core Game Engine class handling the game loop, canvas rendering, and game object management
  */
 class GameEngine {
   /**
    * Creates a new GameEngine instance
-   * @param {Object} config - Engine configuration options
-   * @param {number} config.targetFPS - Target frames per second (default: 60)
-   * @param {boolean} config.debug - Enable debug mode (default: false)
+   * @param {Object} config - Engine configuration object
+   * @param {number} config.width - Canvas width in pixels
+   * @param {number} config.height - Canvas height in pixels
+   * @param {number} config.fps - Target frames per second
+   * @param {string} config.canvasId - DOM ID for the canvas element
    */
-  constructor(config = {}) {
-    // Core engine properties
+  constructor(config) {
+    // Validate required config
+    if (!config || !config.width || !config.height || !config.fps || !config.canvasId) {
+      throw new Error('Invalid engine configuration');
+    }
+
+    // Engine state
     this.isRunning = false;
     this.lastFrameTime = 0;
     this.deltaTime = 0;
-    this.frameCount = 0;
-    
-    // Configuration
-    this.targetFPS = config.targetFPS || 60;
-    this.frameInterval = 1000 / this.targetFPS;
-    this.debug = config.debug || false;
+    this.fps = config.fps;
+    this.frameInterval = 1000 / this.fps;
 
-    // Game state
-    this.entities = new Set();
-    this.systems = new Map();
+    // Game objects collection
+    this.gameObjects = new Set();
     
-    // Bind methods to preserve context
+    // Setup canvas
+    this.setupCanvas(config);
+    
+    // Bind methods
     this.gameLoop = this.gameLoop.bind(this);
-    this.update = this.update.bind(this);
-    this.render = this.render.bind(this);
   }
 
   /**
-   * Initializes the game engine
-   * @param {HTMLCanvasElement} canvas - The canvas element to render to
-   * @returns {Promise<void>}
+   * Sets up the canvas and rendering context
+   * @private
+   * @param {Object} config - Engine configuration
+   * @throws {Error} If canvas element cannot be found or context cannot be obtained
    */
-  async initialize(canvas) {
-    if (!canvas) {
-      throw new Error('Canvas element is required for engine initialization');
+  setupCanvas(config) {
+    this.canvas = document.getElementById(config.canvasId);
+    if (!this.canvas) {
+      throw new Error(`Canvas element with id '${config.canvasId}' not found`);
     }
 
-    this.canvas = canvas;
-    this.context = canvas.getContext('2d');
-
-    if (!this.context) {
+    this.canvas.width = config.width;
+    this.canvas.height = config.height;
+    
+    this.ctx = this.canvas.getContext('2d');
+    if (!this.ctx) {
       throw new Error('Failed to get 2D rendering context');
     }
-
-    // Initialize core systems
-    try {
-      await this.initializeSystems();
-      this.isInitialized = true;
-    } catch (error) {
-      console.error('Failed to initialize game engine:', error);
-      throw error;
-    }
   }
 
   /**
-   * Initializes core game systems
-   * @private
-   * @returns {Promise<void>}
-   */
-  async initializeSystems() {
-    // Initialize core systems here
-    // This will be expanded as other systems are implemented
-  }
-
-  /**
-   * Starts the game loop
+   * Starts the game engine
    */
   start() {
-    if (!this.isInitialized) {
-      throw new Error('Engine must be initialized before starting');
-    }
-
-    if (this.isRunning) {
-      return;
-    }
-
+    if (this.isRunning) return;
+    
     this.isRunning = true;
     this.lastFrameTime = performance.now();
     requestAnimationFrame(this.gameLoop);
   }
 
   /**
-   * Stops the game loop
+   * Stops the game engine
    */
   stop() {
     this.isRunning = false;
@@ -99,27 +80,25 @@ class GameEngine {
   /**
    * Main game loop
    * @private
-   * @param {number} timestamp - Current timestamp from requestAnimationFrame
+   * @param {number} currentTime - Current timestamp
    */
-  gameLoop(timestamp) {
-    if (!this.isRunning) {
-      return;
-    }
+  gameLoop(currentTime) {
+    if (!this.isRunning) return;
 
     // Calculate delta time
-    this.deltaTime = timestamp - this.lastFrameTime;
+    this.deltaTime = currentTime - this.lastFrameTime;
 
     // Check if it's time for the next frame
     if (this.deltaTime >= this.frameInterval) {
-      // Update game state
-      this.update(this.deltaTime);
-      
-      // Render frame
-      this.render();
-
       // Update timing
-      this.lastFrameTime = timestamp - (this.deltaTime % this.frameInterval);
-      this.frameCount++;
+      this.lastFrameTime = currentTime - (this.deltaTime % this.frameInterval);
+
+      // Clear canvas
+      this.clear();
+
+      // Update and render game objects
+      this.update(this.deltaTime / 1000); // Convert to seconds
+      this.render();
     }
 
     // Schedule next frame
@@ -127,100 +106,72 @@ class GameEngine {
   }
 
   /**
-   * Updates game state
-   * @private
-   * @param {number} deltaTime - Time elapsed since last update
+   * Updates all game objects
+   * @param {number} deltaTime - Time elapsed since last update in seconds
    */
   update(deltaTime) {
-    // Update all game systems
-    for (const system of this.systems.values()) {
-      if (typeof system.update === 'function') {
-        system.update(deltaTime);
-      }
-    }
-
-    // Update all entities
-    for (const entity of this.entities) {
-      if (typeof entity.update === 'function') {
-        entity.update(deltaTime);
+    for (const gameObject of this.gameObjects) {
+      if (typeof gameObject.update === 'function') {
+        gameObject.update(deltaTime);
       }
     }
   }
 
   /**
-   * Renders the current frame
-   * @private
+   * Renders all game objects
    */
   render() {
-    // Clear canvas
-    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-    // Render all entities
-    for (const entity of this.entities) {
-      if (typeof entity.render === 'function') {
-        entity.render(this.context);
+    for (const gameObject of this.gameObjects) {
+      if (typeof gameObject.render === 'function') {
+        gameObject.render(this.ctx);
       }
     }
+  }
 
-    // Debug rendering
-    if (this.debug) {
-      this.renderDebugInfo();
+  /**
+   * Clears the canvas
+   */
+  clear() {
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+
+  /**
+   * Adds a game object to the engine
+   * @param {Object} gameObject - Game object to add
+   * @throws {Error} If game object is invalid
+   */
+  addGameObject(gameObject) {
+    if (!gameObject || typeof gameObject !== 'object') {
+      throw new Error('Invalid game object');
     }
+    this.gameObjects.add(gameObject);
   }
 
   /**
-   * Adds an entity to the game
-   * @param {Object} entity - Entity to add
+   * Removes a game object from the engine
+   * @param {Object} gameObject - Game object to remove
    */
-  addEntity(entity) {
-    if (!entity) {
-      throw new Error('Cannot add null or undefined entity');
-    }
-    this.entities.add(entity);
+  removeGameObject(gameObject) {
+    this.gameObjects.delete(gameObject);
   }
 
   /**
-   * Removes an entity from the game
-   * @param {Object} entity - Entity to remove
+   * Gets the current canvas context
+   * @returns {CanvasRenderingContext2D} The 2D rendering context
    */
-  removeEntity(entity) {
-    this.entities.delete(entity);
+  getContext() {
+    return this.ctx;
   }
 
   /**
-   * Registers a game system
-   * @param {string} name - System name
-   * @param {Object} system - System instance
+   * Gets the canvas dimensions
+   * @returns {Object} Object containing canvas width and height
    */
-  registerSystem(name, system) {
-    if (!name || !system) {
-      throw new Error('System name and instance are required');
-    }
-    this.systems.set(name, system);
-  }
-
-  /**
-   * Renders debug information
-   * @private
-   */
-  renderDebugInfo() {
-    const fps = Math.round(1000 / this.deltaTime);
-    const entityCount = this.entities.size;
-
-    this.context.fillStyle = 'white';
-    this.context.font = '12px monospace';
-    this.context.fillText(`FPS: ${fps}`, 10, 20);
-    this.context.fillText(`Entities: ${entityCount}`, 10, 40);
-  }
-
-  /**
-   * Cleans up engine resources
-   */
-  cleanup() {
-    this.stop();
-    this.entities.clear();
-    this.systems.clear();
-    this.isInitialized = false;
+  getCanvasDimensions() {
+    return {
+      width: this.canvas.width,
+      height: this.canvas.height
+    };
   }
 }
 
