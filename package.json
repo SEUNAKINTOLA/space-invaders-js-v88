@@ -1,0 +1,81 @@
+{
+  "name": "space-invaders-js-v88",
+  "version": "1.0.0",
+  "description": "Modern JavaScript implementation of the classic Space Invaders game",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "webpack serve --mode development --open",
+    "build": "webpack --mode production",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:e2e": "jest --config jest.config.e2e.js",
+    "test:integration": "jest --config jest.config.integration.js",
+    "test:performance": "jest --config jest.config.performance.js",
+    "lint": "eslint src tests",
+    "lint:fix": "eslint src tests --fix",
+    "format": "prettier --write \"src/**/*.{js,jsx,css,html}\" \"tests/**/*.{js,jsx}\"",
+    "prepare": "husky install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/space-invaders-js-v88.git"
+  },
+  "keywords": [
+    "game",
+    "space-invaders",
+    "javascript",
+    "canvas",
+    "html5"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "core-js": "^3.30.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.21.4",
+    "@babel/preset-env": "^7.21.4",
+    "@testing-library/jest-dom": "^5.16.5",
+    "babel-loader": "^9.1.2",
+    "css-loader": "^6.7.3",
+    "eslint": "^8.38.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-jest": "^27.2.1",
+    "html-webpack-plugin": "^5.5.1",
+    "husky": "^8.0.3",
+    "jest": "^29.5.0",
+    "jest-environment-jsdom": "^29.5.0",
+    "lint-staged": "^13.2.1",
+    "prettier": "^2.8.7",
+    "style-loader": "^3.3.2",
+    "webpack": "^5.79.0",
+    "webpack-cli": "^5.0.1",
+    "webpack-dev-server": "^4.13.3"
+  },
+  "lint-staged": {
+    "*.{js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{css,html}": [
+      "prettier --write"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  }
+}

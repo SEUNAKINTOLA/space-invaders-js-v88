@@ -1,0 +1,123 @@
+"""
+Unit tests for .prettierrc configuration file validation.
+"""
+import json
+import os
+# TODO: Fix import - import unittest
+from typing import Dict, Any
+
+
+class TestPrettierConfig(unittest.TestCase):
+    """Test suite for .prettierrc configuration validation."""
+
+    def setUp(self) -> None:
+        """Set up test fixtures before each test method."""
+        self.config_path = os.path.join(os.path.dirname(__file__), '..', '..', '.prettierrc')
+        self.required_fields = {
+            'semi': bool,
+            'singleQuote': bool,
+            'tabWidth': int,
+            'printWidth': int
+        }
+
+    def load_config(self) -> Dict[str, Any]:
+        """
+        Load the .prettierrc configuration file.
+
+        Returns:
+            Dict[str, Any]: The parsed configuration object
+        
+        Raises:
+            FileNotFoundError: If .prettierrc file doesn't exist
+            json.JSONDecodeError: If file contains invalid JSON
+        """
+        try:
+            with open(self.config_path, 'r') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            self.fail(".prettierrc file not found")
+        except json.JSONDecodeError:
+            self.fail(".prettierrc contains invalid JSON")
+
+    def test_config_file_exists(self) -> None:
+        """Test that .prettierrc file exists in the project root."""
+        self.assertTrue(
+            os.path.exists(self.config_path),
+            "Missing .prettierrc configuration file"
+        )
+
+    def test_config_is_valid_json(self) -> None:
+        """Test that .prettierrc contains valid JSON."""
+        config = self.load_config()
+        self.assertIsInstance(config, dict, "Config should be a JSON object")
+
+    def test_required_fields_present(self) -> None:
+        """Test that all required configuration fields are present."""
+        config = self.load_config()
+        
+        for field, expected_type in self.required_fields.items():
+            self.assertIn(
+                field, 
+                config,
+                f"Missing required field: {field}"
+            )
+            self.assertIsInstance(
+                config[field],
+                expected_type,
+                f"Field {field} should be of type {expected_type.__name__}"
+            )
+
+    def test_valid_tab_width(self) -> None:
+        """Test that tabWidth has a reasonable value."""
+        config = self.load_config()
+        tab_width = config.get('tabWidth')
+        
+        self.assertIsNotNone(tab_width, "tabWidth must be specified")
+        self.assertGreater(tab_width, 0, "tabWidth must be positive")
+        self.assertLess(tab_width, 9, "tabWidth should be less than 9")
+
+    def test_valid_print_width(self) -> None:
+        """Test that printWidth has a reasonable value."""
+        config = self.load_config()
+        print_width = config.get('printWidth')
+        
+        self.assertIsNotNone(print_width, "printWidth must be specified")
+        self.assertGreater(print_width, 0, "printWidth must be positive")
+        self.assertLess(print_width, 201, "printWidth should be less than 201")
+
+    def test_config_values_consistency(self) -> None:
+        """Test that configuration values are consistent with project standards."""
+        config = self.load_config()
+        
+        # Common Prettier defaults and best practices
+        self.assertTrue(
+            config.get('semi', True),
+            "semi should be true for JavaScript projects"
+        )
+        self.assertTrue(
+            config.get('singleQuote', True),
+            "singleQuote should be true for consistent string formatting"
+        )
+
+    def test_no_conflicting_options(self) -> None:
+        """Test that there are no conflicting Prettier options."""
+        config = self.load_config()
+        
+        # Check mutually exclusive options
+        if 'useTabs' in config:
+            self.assertNotIn(
+                'tabWidth',
+                config,
+                "Cannot specify both useTabs and tabWidth"
+            )
+
+        if 'parser' in config:
+            self.assertNotIn(
+                'filepath',
+                config,
+                "Cannot specify both parser and filepath"
+            )
+
+
+if __name__ == '__main__':
+    unittest.main()

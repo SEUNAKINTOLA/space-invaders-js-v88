@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="description" content="Space Invaders JS V88 - A modern JavaScript implementation of the classic arcade game">
+    
+    <title>Space Invaders JS V88</title>
+
+    <!-- Preload game assets -->
+    <link rel="preload" href="styles/main.css" as="style">
+    <link rel="preload" href="styles/controls.css" as="style">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/controls.css">
+
+    <!-- Prevent favicon requests -->
+    <link rel="icon" href="data:,">
+</head>
+<body>
+    <!-- Game container -->
+    <main id="game-container" class="game-container">
+        <!-- Game canvas will be injected here by JavaScript -->
+        <canvas id="gameCanvas" class="game-canvas" aria-label="Space Invaders Game Canvas">
+            Your browser does not support the HTML5 canvas element.
+        </canvas>
+    </main>
+
+    <!-- Touch controls container -->
+    <div id="touch-controls" class="touch-controls" aria-label="Touch Controls">
+        <!-- Touch controls will be injected here by JavaScript -->
+    </div>
+
+    <!-- Loading screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <h1>Space Invaders JS</h1>
+            <p>Loading...</p>
+        </div>
+    </div>
+
+    <!-- Error message container -->
+    <div id="error-container" class="error-container" hidden>
+        <div class="error-content">
+            <h2>Error</h2>
+            <p id="error-message"></p>
+            <button id="retry-button" class="retry-button">Retry</button>
+        </div>
+    </div>
+
+    <!-- Game scripts -->
+    <script src="index.js" type="module" defer></script>
+
+    <!-- Fallback for JavaScript disabled -->
+    <noscript>
+        <div class="noscript-message">
+            <h2>JavaScript Required</h2>
+            <p>Please enable JavaScript to play Space Invaders JS.</p>
+        </div>
+    </noscript>
+</body>
+</html>
