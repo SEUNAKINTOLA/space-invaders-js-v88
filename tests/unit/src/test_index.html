@@ -1,0 +1,160 @@
+"""
+Unit tests for src/index.html file structure and content validation.
+"""
+# TODO: Fix import - import unittest
+import os
+from pathlib import Path
+from typing import Optional, Dict, List
+
+class TestIndexHTML(unittest.TestCase):
+    """Test suite for validating the structure and content of index.html"""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        """Set up test fixtures before running tests"""
+        # Get the project root directory
+        cls.project_root = Path(__file__).parent.parent.parent.parent
+        cls.index_path = cls.project_root / 'src' / 'index.html'
+
+    def setUp(self) -> None:
+        """Set up test case specific fixtures"""
+        self.html_content = self._read_html_file()
+
+    def _read_html_file(self) -> Optional[str]:
+        """
+        Read the contents of index.html file
+        
+        Returns:
+            str: Content of the index.html file or None if file doesn't exist
+        """
+        try:
+            with open(self.index_path, 'r', encoding='utf-8') as file:
+                return file.read()
+        except FileNotFoundError:
+            return None
+
+    def test_index_html_exists(self) -> None:
+        """Test that index.html file exists in the correct location"""
+        self.assertTrue(
+            self.index_path.exists(),
+            f"index.html not found at expected path: {self.index_path}"
+        )
+
+    def test_html_basic_structure(self) -> None:
+        """Test that HTML file has required basic structure elements"""
+        self.assertIsNotNone(self.html_content, "HTML content should not be None")
+        
+        required_elements = [
+            "<!DOCTYPE html>",
+            "<html",
+            "<head",
+            "<body",
+            "</html>"
+        ]
+        
+        for element in required_elements:
+            self.assertIn(
+                element,
+                self.html_content,
+                f"Missing required HTML element: {element}"
+            )
+
+    def test_required_meta_tags(self) -> None:
+        """Test that required meta tags are present"""
+        self.assertIsNotNone(self.html_content, "HTML content should not be None")
+        
+        required_meta = [
+            '<meta charset="',
+            '<meta name="viewport"',
+            'content="width=device-width'
+        ]
+        
+        for meta in required_meta:
+            self.assertIn(
+                meta,
+                self.html_content,
+                f"Missing required meta tag: {meta}"
+            )
+
+    def test_css_includes(self) -> None:
+        """Test that required CSS files are included"""
+        self.assertIsNotNone(self.html_content, "HTML content should not be None")
+        
+        required_css = [
+            'main.css',
+            'controls.css'
+        ]
+        
+        for css in required_css:
+            self.assertIn(
+                css,
+                self.html_content,
+                f"Missing CSS include: {css}"
+            )
+
+    def test_javascript_includes(self) -> None:
+        """Test that required JavaScript files are included"""
+        self.assertIsNotNone(self.html_content, "HTML content should not be None")
+        
+        # The main bundle should be included
+        self.assertIn(
+            'src="',
+            self.html_content,
+            "Missing JavaScript source include"
+        )
+
+    def test_canvas_element(self) -> None:
+        """Test that canvas element is present with correct attributes"""
+        self.assertIsNotNone(self.html_content, "HTML content should not be None")
+        
+        canvas_requirements = [
+            "<canvas",
+            "id=",
+            ">"
+        ]
+        
+        for req in canvas_requirements:
+            self.assertIn(
+                req,
+                self.html_content,
+                f"Missing canvas requirement: {req}"
+            )
+
+    def test_touch_controls_container(self) -> None:
+        """Test that touch controls container is present"""
+        self.assertIsNotNone(self.html_content, "HTML content should not be None")
+        
+        self.assertIn(
+            'touch-controls',
+            self.html_content,
+            "Missing touch controls container"
+        )
+
+    def test_html_validity(self) -> None:
+        """Test basic HTML validity checks"""
+        self.assertIsNotNone(self.html_content, "HTML content should not be None")
+        
+        # Check for matching tags
+        opening_tags = self.html_content.count("<html")
+        closing_tags = self.html_content.count("</html>")
+        self.assertEqual(
+            opening_tags,
+            closing_tags,
+            "Mismatched HTML tags"
+        )
+        
+        # Check for proper nesting
+        self.assertLess(
+            self.html_content.find("<head"),
+            self.html_content.find("</head>"),
+            "Improper head tag nesting"
+        )
+        
+        self.assertLess(
+            self.html_content.find("<body"),
+            self.html_content.find("</body>"),
+            "Improper body tag nesting"
+        )
+
+if __name__ == '__main__':
+    unittest.main()
