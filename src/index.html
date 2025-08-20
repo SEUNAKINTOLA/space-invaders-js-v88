@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="description" content="Space Invaders JS V88 - A modern take on the classic arcade game">
+    
+    <title>Space Invaders JS V88</title>
+    
+    <!-- Security headers -->
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self'; 
+                   script-src 'self' 'unsafe-inline' 'unsafe-eval'; 
+                   style-src 'self' 'unsafe-inline';
+                   img-src 'self' data:;
+                   media-src 'self'">
+    
+    <!-- Preload critical assets -->
+    <link rel="preload" href="styles/main.css" as="style">
+    <link rel="preload" href="index.js" as="script">
+    
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="styles/main.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/sprites/player.png">
+</head>
+<body>
+    <!-- Game container -->
+    <main id="game-container" class="game-container">
+        <!-- Game canvas will be injected here -->
+        <canvas id="gameCanvas" class="game-canvas">
+            Your browser does not support the HTML5 canvas element.
+        </canvas>
+        
+        <!-- UI Overlay -->
+        <div id="ui-overlay" class="ui-overlay">
+            <!-- Score display -->
+            <div id="score-display" class="score-display"></div>
+            
+            <!-- Volume control -->
+            <div id="volume-control" class="volume-control">
+                <button id="toggleAudio" class="audio-btn" aria-label="Toggle audio">
+                    🔊
+                </button>
+            </div>
+        </div>
+        
+        <!-- Loading screen -->
+        <div id="loading-screen" class="loading-screen">
+            <div class="loader"></div>
+            <p>Loading game assets...</p>
+        </div>
+        
+        <!-- Game over screen -->
+        <div id="game-over" class="game-over hidden">
+            <h2>Game Over</h2>
+            <p>Score: <span id="final-score">0</span></p>
+            <button id="restart-btn" class="btn">Play Again</button>
+        </div>
+    </main>
+    
+    <!-- Error handling -->
+    <div id="error-message" class="error-message hidden">
+        <p>An error occurred. Please refresh the page.</p>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="index.js" type="module" defer></script>
+    
+    <!-- Fallback for no JavaScript -->
+    <noscript>
+        <div class="noscript-message">
+            <p>JavaScript is required to play Space Invaders JS V88.</p>
+            <p>Please enable JavaScript in your browser settings.</p>
+        </div>
+    </noscript>
+</body>
+</html>
