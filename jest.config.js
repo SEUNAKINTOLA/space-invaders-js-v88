@@ -15,7 +15,8 @@ module.exports = {
   testPathIgnorePatterns: [
     '/node_modules/',
     '/dist/',
-    '/coverage/'
+    '/coverage/',
+    'performance/'
   ],
 
   // Module resolution and transformations
@@ -38,6 +39,13 @@ module.exports = {
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
+  coveragePathIgnorePatterns: [
+    '/node_modules/',
+    '/tests/',
+    '/dist/'
+  ],
+  
+  // Coverage thresholds
   coverageThreshold: {
     global: {
       branches: 80,
@@ -82,7 +90,23 @@ module.exports = {
   // Custom resolver for module imports
   moduleDirectories: ['node_modules', 'src'],
 
+  // Transform configuration
+  transform: {
+    '^.+\\.js$': 'babel-jest'
+  },
+
+  // Watch plugins
+  watchPlugins: [
+    'jest-watch-typeahead/filename',
+    'jest-watch-typeahead/testname'
+  ],
+
   // Global setup/teardown hooks
   globalSetup: '<rootDir>/tests/globalSetup.js',
-  globalTeardown: '<rootDir>/tests/globalTeardown.js'
+  globalTeardown: '<rootDir>/tests/globalTeardown.js',
+
+  // Environment variables
+  testEnvironmentOptions: {
+    url: 'http://localhost'
+  }
 };
