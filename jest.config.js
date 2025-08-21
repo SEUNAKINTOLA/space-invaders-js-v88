@@ -1,19 +1,42 @@
 /**
- * Jest configuration for Space Invaders JS V88
- * Configures test environment, coverage reporting, and module handling
+ * Jest Configuration for Space Invaders JS V88
+ * Configures test environment, coverage reporting, and module resolution
  */
 module.exports = {
-  // Test environment
-  testEnvironment: 'jsdom', // Using jsdom for DOM manipulation tests
-  
+  // Test environment setup
+  testEnvironment: 'jsdom', // Using jsdom for browser-like environment
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
+
   // Test file patterns
   testMatch: [
-    '**/tests/unit/**/*.test.js',
-    '**/tests/integration/**/*.test.js'
+    '<rootDir>/tests/unit/**/*.test.js',
+    '<rootDir>/tests/integration/**/*.test.js'
   ],
-  
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/dist/',
+    '/coverage/',
+    'performance/'
+  ],
+
+  // Module resolution and transformations
+  moduleNameMapper: {
+    // Handle CSS imports in tests
+    '\\.(css|less|scss|sass)$': '<rootDir>/tests/mocks/styleMock.js',
+    // Handle static asset imports
+    '\\.(jpg|jpeg|png|gif|webp|svg)$': '<rootDir>/tests/mocks/fileMock.js',
+    // Path aliases for cleaner imports
+    '^@/(.*)$': '<rootDir>/src/$1'
+  },
+
   // Coverage configuration
   collectCoverage: true,
+  collectCoverageFrom: [
+    'src/**/*.js',
+    '!src/index.js',
+    '!**/node_modules/**',
+    '!**/vendor/**'
+  ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   coveragePathIgnorePatterns: [
@@ -32,23 +55,45 @@ module.exports = {
     }
   },
 
+  // Performance and optimization
+  maxWorkers: '50%', // Limit parallel test execution
+  verbose: true,
+  bail: false, // Don't stop on first failure
+
   // Module file extensions
-  moduleFileExtensions: ['js'],
+  moduleFileExtensions: ['js', 'json'],
 
-  // Module name mapper for assets/styles
-  moduleNameMapper: {
-    '\\.(jpg|jpeg|png|gif|svg)$': '<rootDir>/tests/mocks/fileMock.js',
-    '\\.(css|less|scss)$': '<rootDir>/tests/mocks/styleMock.js'
-  },
+  // Reporter configuration
+  reporters: [
+    'default',
+    [
+      'jest-junit',
+      {
+        outputDirectory: 'reports/junit',
+        outputName: 'js-test-results.xml',
+        classNameTemplate: '{classname}',
+        titleTemplate: '{title}'
+      }
+    ]
+  ],
 
-  // Setup files
-  setupFiles: ['<rootDir>/tests/setup.js'],
-
-  // Test timeout
+  // Global test timeout
   testTimeout: 10000,
 
-  // Verbose output
-  verbose: true,
+  // Clear mocks between tests
+  clearMocks: true,
+  restoreMocks: true,
+
+  // Error handling
+  errorOnDeprecated: true,
+
+  // Custom resolver for module imports
+  moduleDirectories: ['node_modules', 'src'],
+
+  // Transform configuration
+  transform: {
+    '^.+\\.js$': 'babel-jest'
+  },
 
   // Watch plugins
   watchPlugins: [
@@ -56,23 +101,8 @@ module.exports = {
     'jest-watch-typeahead/testname'
   ],
 
-  // Transform configuration
-  transform: {
-    '^.+\\.js$': 'babel-jest'
-  },
-
-  // Ignore patterns
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    '/dist/',
-    '/coverage/',
-    'performance/'
-  ],
-
-  // Global setup
+  // Global setup/teardown hooks
   globalSetup: '<rootDir>/tests/globalSetup.js',
-  
-  // Global teardown  
   globalTeardown: '<rootDir>/tests/globalTeardown.js',
 
   // Environment variables

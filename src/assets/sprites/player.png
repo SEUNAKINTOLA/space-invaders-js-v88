@@ -1,0 +1,138 @@
+"""
+Player Ship Sprite Module
+
+Handles the player ship sprite and its basic attributes for the Space Invaders game.
+Provides functionality for sprite loading, positioning and basic state management.
+"""
+
+import os
+# TODO: Fix import - from dataclasses import dataclass
+from typing import Tuple, Optional
+# TODO: Fix import - import pygame
+
+@dataclass
+class PlayerSpriteConfig:
+    """Configuration settings for the player sprite"""
+    sprite_path: str = os.path.join('src', 'assets', 'sprites', 'player.png')
+    default_width: int = 64
+    default_height: int = 64
+    default_speed: float = 5.0
+    scale_factor: float = 1.0
+
+class PlayerSprite:
+    """
+    Handles the player ship sprite and its attributes.
+    
+    Attributes:
+        position (Tuple[float, float]): Current position (x, y) of the sprite
+        width (int): Sprite width in pixels
+        height (int): Sprite height in pixels
+        speed (float): Movement speed of the player
+        sprite (Optional[pygame.Surface]): The loaded sprite surface
+    """
+
+    def __init__(
+        self,
+        initial_position: Tuple[float, float] = (0, 0),
+        config: PlayerSpriteConfig = PlayerSpriteConfig()
+    ):
+        """
+        Initialize the player sprite.
+
+        Args:
+            initial_position: Starting position (x, y) for the sprite
+            config: Configuration settings for the sprite
+        """
+        self.position = initial_position
+        self.width = config.default_width
+        self.height = config.default_height
+        self.speed = config.default_speed
+        self.sprite: Optional[pygame.Surface] = None
+        self.config = config
+        self._load_sprite()
+
+    def _load_sprite(self) -> None:
+        """
+        Load the sprite image from file and apply necessary transformations.
+        Handles errors gracefully if sprite file cannot be loaded.
+        """
+        try:
+            if not pygame.get_init():
+                pygame.init()
+            
+            original_sprite = pygame.image.load(self.config.sprite_path)
+            
+            # Scale sprite if needed
+            if self.config.scale_factor != 1.0:
+                scaled_width = int(self.width * self.config.scale_factor)
+                scaled_height = int(self.height * self.config.scale_factor)
+                self.sprite = pygame.transform.scale(
+                    original_sprite, 
+                    (scaled_width, scaled_height)
+                )
+                self.width = scaled_width
+                self.height = scaled_height
+            else:
+                self.sprite = original_sprite
+                
+        except (pygame.error, FileNotFoundError) as e:
+            print(f"Error loading player sprite: {e}")
+            # Create a default rectangle sprite if image loading fails
+            self.sprite = pygame.Surface((self.width, self.height))
+            self.sprite.fill((255, 255, 255))  # White rectangle as fallback
+
+    def get_rect(self) -> pygame.Rect:
+        """
+        Get the rectangular bounds of the sprite.
+
+        Returns:
+            pygame.Rect: Rectangle representing sprite bounds
+        """
+        return pygame.Rect(
+            self.position[0],
+            self.position[1],
+            self.width,
+            self.height
+        )
+
+    def set_position(self, x: float, y: float) -> None:
+        """
+        Set the sprite's position.
+
+        Args:
+            x: New x coordinate
+            y: New y coordinate
+        """
+        self.position = (x, y)
+
+    def move(self, dx: float, dy: float) -> None:
+        """
+        Move the sprite relative to its current position.
+
+        Args:
+            dx: Change in x position
+            dy: Change in y position
+        """
+        new_x = self.position[0] + (dx * self.speed)
+        new_y = self.position[1] + (dy * self.speed)
+        self.position = (new_x, new_y)
+
+    def draw(self, surface: pygame.Surface) -> None:
+        """
+        Draw the sprite on the given surface.
+
+        Args:
+            surface: Pygame surface to draw the sprite on
+        """
+        if self.sprite:
+            surface.blit(self.sprite, self.position)
+
+    def update(self, delta_time: float) -> None:
+        """
+        Update sprite state based on elapsed time.
+
+        Args:
+            delta_time: Time elapsed since last update in seconds
+        """
+        # Currently just a placeholder for future animation or state updates
+        pass

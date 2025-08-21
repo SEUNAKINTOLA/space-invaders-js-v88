@@ -1,195 +1,220 @@
 /**
  * @fileoverview Wave Manager System for Space Invaders
- * Handles enemy wave generation, patterns, and progression
+ * Handles enemy wave spawning, patterns, and management
  */
 
-// Constants for wave configuration
-const WAVE_CONSTANTS = {
-    MIN_ENEMIES: 4,
-    MAX_ENEMIES: 12,
-    DIFFICULTY_MULTIPLIER: 1.2,
-    BASE_SPAWN_DELAY: 1000,
-    WAVE_COOLDOWN: 3000
-};
-
-/**
- * Manages enemy wave generation and behavior
- */
 class WaveManager {
     /**
-     * @param {Object} config - Wave configuration options
-     * @param {number} config.initialWaveSize - Starting number of enemies
-     * @param {number} config.maxWaves - Maximum number of waves
-     * @param {number} config.spawnDelay - Delay between enemy spawns
+     * @typedef {Object} WaveConfig
+     * @property {number} enemyCount - Number of enemies in the wave
+     * @property {string} pattern - Movement pattern identifier
+     * @property {number} speed - Base movement speed
+     * @property {number} spacing - Space between enemies
+     */
+
+    /**
+     * Initialize the wave manager
+     * @param {Object} config - Configuration object
+     * @param {number} config.initialWave - Starting wave number
+     * @param {number} config.difficultyScale - Scaling factor for difficulty
      */
     constructor(config = {}) {
-        this.currentWave = 0;
+        this.currentWave = config.initialWave || 1;
+        this.difficultyScale = config.difficultyScale || 1.2;
         this.activeEnemies = new Set();
-        this.isWaveActive = false;
-        this.waveScore = 0;
-
-        // Configuration with defaults
-        this.config = {
-            initialWaveSize: config.initialWaveSize || WAVE_CONSTANTS.MIN_ENEMIES,
-            maxWaves: config.maxWaves || Infinity,
-            spawnDelay: config.spawnDelay || WAVE_CONSTANTS.BASE_SPAWN_DELAY
-        };
-
-        // Bind methods
-        this.startWave = this.startWave.bind(this);
-        this.endWave = this.endWave.bind(this);
-        this.update = this.update.bind(this);
+        this.waveInProgress = false;
+        this.wavePatterns = this.initializeWavePatterns();
     }
 
     /**
-     * Initializes a new wave of enemies
-     * @returns {Promise<void>}
+     * Initialize predefined wave patterns
+     * @private
+     * @returns {Object} Wave patterns configuration
+     */
+    initializeWavePatterns() {
+        return {
+            standard: {
+                enemyCount: 10,
+                pattern: 'horizontal',
+                speed: 1,
+                spacing: 50
+            },
+            aggressive: {
+                enemyCount: 8,
+                pattern: 'zigzag',
+                speed: 1.5,
+                spacing: 40
+            },
+            defensive: {
+                enemyCount: 12,
+                pattern: 'circular',
+                speed: 0.8,
+                spacing: 60
+            }
+        };
+    }
+
+    /**
+     * Start a new wave
+     * @returns {Promise<boolean>} Success status
      */
     async startWave() {
-        if (this.isWaveActive) {
-            return;
+        if (this.waveInProgress) {
+            return false;
         }
 
-        this.currentWave++;
-        this.isWaveActive = true;
-        this.waveScore = 0;
-
-        const enemyCount = this.calculateWaveSize();
-        
         try {
-            await this.spawnWaveEnemies(enemyCount);
-            this.emit('waveStarted', { waveNumber: this.currentWave });
+            this.waveInProgress = true;
+            const waveConfig = this.generateWaveConfig();
+            await this.spawnEnemies(waveConfig);
+            return true;
         } catch (error) {
             console.error('Error starting wave:', error);
-            this.isWaveActive = false;
+            return false;
         }
     }
 
     /**
-     * Calculates the number of enemies for the current wave
+     * Generate configuration for current wave
      * @private
-     * @returns {number}
+     * @returns {WaveConfig} Wave configuration
      */
-    calculateWaveSize() {
-        const baseSize = this.config.initialWaveSize;
-        const waveDifficulty = Math.pow(WAVE_CONSTANTS.DIFFICULTY_MULTIPLIER, this.currentWave - 1);
-        const calculatedSize = Math.floor(baseSize * waveDifficulty);
-        
-        return Math.min(calculatedSize, WAVE_CONSTANTS.MAX_ENEMIES);
-    }
-
-    /**
-     * Spawns enemies for the current wave
-     * @private
-     * @param {number} count - Number of enemies to spawn
-     * @returns {Promise<void>}
-     */
-    async spawnWaveEnemies(count) {
-        for (let i = 0; i < count; i++) {
-            if (!this.isWaveActive) break;
-
-            const enemy = this.createEnemy();
-            this.activeEnemies.add(enemy);
-            
-            // Wait for spawn delay
-            await new Promise(resolve => setTimeout(resolve, this.config.spawnDelay));
-        }
-    }
-
-    /**
-     * Creates a new enemy instance
-     * @private
-     * @returns {Object}
-     */
-    createEnemy() {
-        // Enemy creation logic would be implemented here
-        // This is a placeholder that would integrate with the Enemy entity
+    generateWaveConfig() {
+        const basePattern = this.getWavePattern();
         return {
-            id: Math.random().toString(36).substr(2, 9),
-            health: 100,
-            position: { x: 0, y: 0 }
+            enemyCount: Math.floor(basePattern.enemyCount * Math.pow(this.difficultyScale, this.currentWave - 1)),
+            pattern: basePattern.pattern,
+            speed: basePattern.speed * Math.pow(this.difficultyScale, (this.currentWave - 1) * 0.2),
+            spacing: basePattern.spacing
         };
     }
 
     /**
-     * Ends the current wave
-     */
-    endWave() {
-        this.isWaveActive = false;
-        this.activeEnemies.clear();
-        
-        this.emit('waveCompleted', {
-            waveNumber: this.currentWave,
-            score: this.waveScore
-        });
-
-        // Schedule next wave
-        setTimeout(() => {
-            if (this.currentWave < this.config.maxWaves) {
-                this.startWave();
-            } else {
-                this.emit('allWavesCompleted');
-            }
-        }, WAVE_CONSTANTS.WAVE_COOLDOWN);
-    }
-
-    /**
-     * Updates the wave state
-     * @param {number} deltaTime - Time since last update
-     */
-    update(deltaTime) {
-        if (!this.isWaveActive) return;
-
-        // Remove defeated enemies
-        this.activeEnemies.forEach(enemy => {
-            if (enemy.health <= 0) {
-                this.activeEnemies.delete(enemy);
-                this.waveScore += 100; // Basic scoring
-            }
-        });
-
-        // Check if wave is complete
-        if (this.activeEnemies.size === 0) {
-            this.endWave();
-        }
-    }
-
-    /**
-     * Emits events to subscribers
+     * Get wave pattern based on current wave
      * @private
-     * @param {string} eventName 
-     * @param {Object} data 
+     * @returns {WaveConfig} Selected wave pattern
      */
-    emit(eventName, data) {
-        // Basic event emission - would be replaced with proper event system
-        if (this.onEvent) {
-            this.onEvent(eventName, data);
+    getWavePattern() {
+        if (this.currentWave % 3 === 0) {
+            return this.wavePatterns.aggressive;
+        } else if (this.currentWave % 5 === 0) {
+            return this.wavePatterns.defensive;
+        }
+        return this.wavePatterns.standard;
+    }
+
+    /**
+     * Spawn enemies for the current wave
+     * @private
+     * @param {WaveConfig} config - Wave configuration
+     * @returns {Promise<void>}
+     */
+    async spawnEnemies(config) {
+        const enemies = [];
+        for (let i = 0; i < config.enemyCount; i++) {
+            const enemy = this.createEnemy(config, i);
+            enemies.push(enemy);
+            this.activeEnemies.add(enemy);
+        }
+        return Promise.all(enemies);
+    }
+
+    /**
+     * Create a single enemy
+     * @private
+     * @param {WaveConfig} config - Wave configuration
+     * @param {number} index - Enemy index
+     * @returns {Object} Enemy object
+     */
+    createEnemy(config, index) {
+        return {
+            id: `enemy-${this.currentWave}-${index}`,
+            position: this.calculateEnemyPosition(config, index),
+            pattern: config.pattern,
+            speed: config.speed,
+            health: this.calculateEnemyHealth()
+        };
+    }
+
+    /**
+     * Calculate enemy starting position
+     * @private
+     * @param {WaveConfig} config - Wave configuration
+     * @param {number} index - Enemy index
+     * @returns {Object} Position coordinates
+     */
+    calculateEnemyPosition(config, index) {
+        return {
+            x: (index % 5) * config.spacing + 50,
+            y: Math.floor(index / 5) * config.spacing + 50
+        };
+    }
+
+    /**
+     * Calculate enemy health based on current wave
+     * @private
+     * @returns {number} Enemy health points
+     */
+    calculateEnemyHealth() {
+        return Math.ceil(100 * Math.pow(this.difficultyScale, (this.currentWave - 1) * 0.3));
+    }
+
+    /**
+     * Check if wave is complete
+     * @returns {boolean} Wave completion status
+     */
+    isWaveComplete() {
+        return this.waveInProgress && this.activeEnemies.size === 0;
+    }
+
+    /**
+     * Remove enemy from active enemies
+     * @param {string} enemyId - Enemy identifier
+     */
+    removeEnemy(enemyId) {
+        this.activeEnemies.forEach(enemy => {
+            if (enemy.id === enemyId) {
+                this.activeEnemies.delete(enemy);
+            }
+        });
+
+        if (this.activeEnemies.size === 0) {
+            this.onWaveComplete();
         }
     }
 
     /**
-     * Pauses the current wave
+     * Handle wave completion
+     * @private
      */
-    pause() {
-        this.isPaused = true;
+    onWaveComplete() {
+        this.waveInProgress = false;
+        this.currentWave++;
     }
 
     /**
-     * Resumes the current wave
+     * Get current wave number
+     * @returns {number} Current wave
      */
-    resume() {
-        this.isPaused = false;
+    getCurrentWave() {
+        return this.currentWave;
     }
 
     /**
-     * Resets the wave manager to initial state
+     * Get active enemies count
+     * @returns {number} Number of active enemies
+     */
+    getActiveEnemiesCount() {
+        return this.activeEnemies.size;
+    }
+
+    /**
+     * Reset wave manager state
      */
     reset() {
-        this.currentWave = 0;
+        this.currentWave = 1;
         this.activeEnemies.clear();
-        this.isWaveActive = false;
-        this.waveScore = 0;
-        this.isPaused = false;
+        this.waveInProgress = false;
     }
 }
 

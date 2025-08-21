@@ -1,0 +1,98 @@
+"""
+Unit tests for Space Invaders JS V88 Dockerfile configuration.
+Tests Dockerfile structure, commands, and environment setup.
+"""
+
+# TODO: Fix import - import unittest
+import os
+from pathlib import Path
+
+
+class TestDockerfile(unittest.TestCase):
+    """Test suite for validating Dockerfile configuration."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up test fixtures before running tests."""
+        # Get project root directory
+        cls.project_root = Path(__file__).parent.parent.parent
+        cls.dockerfile_path = cls.project_root / "Dockerfile"
+
+    def setUp(self):
+        """Set up test case specific fixtures."""
+        self.assertTrue(self.dockerfile_path.exists(), "Dockerfile not found")
+        with open(self.dockerfile_path, 'r') as f:
+            self.dockerfile_contents = f.read().splitlines()
+
+    def test_dockerfile_exists(self):
+        """Test that Dockerfile exists in project root."""
+        self.assertTrue(self.dockerfile_path.is_file())
+
+    def test_base_image(self):
+        """Test that Dockerfile uses correct base image."""
+        base_image_line = self.dockerfile_contents[0]
+        self.assertIn('FROM node:', base_image_line, 
+                     "Dockerfile should use Node.js base image")
+
+    def test_working_directory(self):
+        """Test working directory is set correctly."""
+        workdir_lines = [l for l in self.dockerfile_contents if l.startswith('WORKDIR')]
+        self.assertTrue(any(workdir_lines), "WORKDIR command not found")
+        self.assertIn('/app', workdir_lines[0], 
+                     "Working directory should be /app")
+
+    def test_copy_package_files(self):
+        """Test package.json and package-lock.json are copied."""
+        copy_lines = [l for l in self.dockerfile_contents if l.startswith('COPY')]
+        package_copies = [l for l in copy_lines if 'package' in l]
+        self.assertTrue(any(package_copies),
+                       "Should copy package.json files")
+
+    def test_npm_install(self):
+        """Test npm install command is present."""
+        npm_lines = [l for l in self.dockerfile_contents if 'npm install' in l]
+        self.assertTrue(any(npm_lines), 
+                       "npm install command not found")
+
+    def test_copy_source_code(self):
+        """Test source code is copied to container."""
+        copy_lines = [l for l in self.dockerfile_contents if l.startswith('COPY')]
+        source_copies = [l for l in copy_lines if '.' in l]
+        self.assertTrue(any(source_copies),
+                       "Should copy source code files")
+
+    def test_expose_port(self):
+        """Test port exposure configuration."""
+        expose_lines = [l for l in self.dockerfile_contents if l.startswith('EXPOSE')]
+        self.assertTrue(any(expose_lines),
+                       "Should expose port for web server")
+
+    def test_start_command(self):
+        """Test container start command configuration."""
+        cmd_lines = [l for l in self.dockerfile_contents 
+                    if l.startswith('CMD') or l.startswith('ENTRYPOINT')]
+        self.assertTrue(any(cmd_lines),
+                       "Should have start command defined")
+
+    def test_development_dependencies(self):
+        """Test development dependencies are included."""
+        dev_deps = [l for l in self.dockerfile_contents 
+                   if 'npm install' in l and '--only=development' in l]
+        self.assertTrue(any(dev_deps),
+                       "Should install development dependencies")
+
+    def test_node_environment(self):
+        """Test NODE_ENV environment variable is set."""
+        env_lines = [l for l in self.dockerfile_contents if 'NODE_ENV' in l]
+        self.assertTrue(any(env_lines),
+                       "Should set NODE_ENV environment variable")
+
+    def test_no_root_user(self):
+        """Test container does not run as root."""
+        user_lines = [l for l in self.dockerfile_contents if l.startswith('USER')]
+        self.assertTrue(any(user_lines),
+                       "Should specify non-root user")
+
+
+if __name__ == '__main__':
+    unittest.main()

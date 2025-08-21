@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Space Invaders V88</title>
+    <meta name="description" content="Space Invaders JS V88 - A modern JavaScript implementation of the classic arcade game">
+    
+    <title>Space Invaders JS V88</title>
     
     <!-- Security headers -->
     <meta http-equiv="Content-Security-Policy" 
@@ -12,59 +14,78 @@
     
     <!-- Preload game assets -->
     <link rel="preload" href="styles/main.css" as="style">
+    <link rel="preload" href="styles/controls.css" as="style">
     <link rel="preload" href="engine/GameEngine.js" as="script">
     <link rel="preload" href="engine/Renderer.js" as="script">
     <link rel="preload" href="engine/GameObject.js" as="script">
-
-    <!-- Styles -->
+    
+    <!-- Stylesheets -->
     <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/controls.css">
+
+    <!-- Prevent favicon requests -->
+    <link rel="icon" href="data:,">
 </head>
 <body>
     <!-- Game container -->
-    <div id="game-container">
+    <main id="game-container" class="game-container">
         <!-- Main game canvas -->
-        <canvas id="gameCanvas"></canvas>
+        <canvas id="gameCanvas" class="game-canvas" aria-label="Space Invaders Game Canvas">
+            Your browser does not support the HTML5 canvas element.
+        </canvas>
         
         <!-- Game UI overlay -->
-        <div id="game-ui">
-            <div id="score">Score: <span id="score-value">0</span></div>
-            <div id="lives">Lives: <span id="lives-value">3</span></div>
-            <div id="wave">Wave: <span id="wave-value">1</span></div>
+        <div id="game-ui" class="game-ui">
+            <div id="score" class="score">Score: <span id="score-value">0</span></div>
+            <div id="lives" class="lives">Lives: <span id="lives-value">3</span></div>
+            <div id="wave" class="wave">Wave: <span id="wave-value">1</span></div>
         </div>
 
         <!-- Game menu -->
-        <div id="game-menu" class="hidden">
+        <div id="game-menu" class="game-menu hidden">
             <h1>Space Invaders</h1>
-            <button id="start-game">Start Game</button>
-            <button id="high-scores">High Scores</button>
-            <button id="settings">Settings</button>
+            <button id="start-game" class="btn">Start Game</button>
+            <button id="high-scores" class="btn">High Scores</button>
+            <button id="settings" class="btn">Settings</button>
         </div>
 
         <!-- Pause menu -->
-        <div id="pause-menu" class="hidden">
+        <div id="pause-menu" class="pause-menu hidden">
             <h2>Game Paused</h2>
-            <button id="resume-game">Resume</button>
-            <button id="quit-game">Quit to Menu</button>
+            <button id="resume-game" class="btn">Resume</button>
+            <button id="quit-game" class="btn">Quit to Menu</button>
         </div>
 
         <!-- Game over screen -->
-        <div id="game-over" class="hidden">
+        <div id="game-over" class="game-over hidden">
             <h2>Game Over</h2>
             <div id="final-score">Final Score: <span id="final-score-value">0</span></div>
-            <button id="play-again">Play Again</button>
-            <button id="return-menu">Return to Menu</button>
+            <button id="play-again" class="btn">Play Again</button>
+            <button id="return-menu" class="btn">Return to Menu</button>
         </div>
+    </main>
+
+    <!-- Touch controls container -->
+    <div id="touch-controls" class="touch-controls" aria-label="Touch Controls">
+        <!-- Touch controls will be injected here by JavaScript -->
     </div>
 
     <!-- Loading screen -->
-    <div id="loading-screen">
-        <div class="loader"></div>
-        <div id="loading-text">Loading game assets...</div>
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <h1>Space Invaders JS</h1>
+            <div class="loader"></div>
+            <p id="loading-text">Loading game assets...</p>
+        </div>
     </div>
 
     <!-- Error message container -->
-    <div id="error-message" class="hidden">
-        <p>An error occurred. Please refresh the page.</p>
+    <div id="error-container" class="error-container" hidden>
+        <div class="error-content">
+            <h2>Error</h2>
+            <p id="error-message">An error occurred. Please refresh the page.</p>
+            <button id="retry-button" class="retry-button">Retry</button>
+        </div>
     </div>
 
     <!-- Game scripts -->
@@ -74,6 +95,7 @@
     <script type="module" src="patterns/EnemyPatterns.js"></script>
     <script type="module" src="systems/WaveManager.js"></script>
     <script type="module" src="entities/Enemy.js"></script>
+    <script src="index.js" type="module" defer></script>
 
     <!-- Initialize game -->
     <script type="module">
@@ -85,23 +107,41 @@
 
                 // Initialize game engine
                 const canvas = document.getElementById('gameCanvas');
-                const gameEngine = new GameEngine(canvas);
+                const gameEngine = new GameEngine({
+                    canvasId: 'gameCanvas',
+                    width: 800,
+                    height: 600,
+                    fps: 60,
+                    debug: false
+                });
                 await gameEngine.initialize();
 
                 // Setup event listeners
-                document.getElementById('start-game').addEventListener('click', () => {
+                document.getElementById('start-game')?.addEventListener('click', () => {
                     document.getElementById('game-menu').classList.add('hidden');
-                    gameEngine.startGame();
+                    gameEngine.start();
                 });
 
                 // Show main menu
-                document.getElementById('game-menu').classList.remove('hidden');
+                document.getElementById('game-menu')?.classList.remove('hidden');
             } catch (error) {
                 console.error('Game initialization failed:', error);
-                document.getElementById('error-message').classList.remove('hidden');
+                const errorContainer = document.getElementById('error-container');
+                const errorMessage = document.getElementById('error-message');
+                if (errorContainer && errorMessage) {
+                    errorMessage.textContent = `Game initialization failed: ${error.message}`;
+                    errorContainer.hidden = false;
+                }
             }
         });
     </script>
-</head>
+
+    <!-- Fallback for JavaScript disabled -->
+    <noscript>
+        <div class="noscript-message">
+            <h2>JavaScript Required</h2>
+            <p>Please enable JavaScript to play Space Invaders JS.</p>
+        </div>
+    </noscript>
 </body>
 </html>

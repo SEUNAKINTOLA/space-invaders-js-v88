@@ -10,36 +10,49 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x]
+
     steps:
     - uses: actions/checkout@v3
     
-    - name: Setup Node.js
+    - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v3
       with:
-        node-version: '16.x'
+        node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    
+        
     - name: Install dependencies
       run: npm ci
-    
+
+    - name: Run ESLint
+      run: npm run lint
+      
     - name: Run unit tests
       run: npm run test:unit
-    
-    - name: Run integration tests
+
+    - name: Run integration tests  
       run: npm run test:integration
 
     - name: Run performance tests
       run: |
-        # Run engine performance benchmarks
-        npm run test:perf
-        
-        # Verify performance thresholds
-        node tests/performance/verify-thresholds.js
+        npm run test:performance
       env:
-        PERF_THRESHOLD_FPS: 60
-        PERF_THRESHOLD_RENDER_TIME: 16
+        COLLISION_BENCHMARK_ITERATIONS: 1000
+        COLLISION_OBJECT_COUNT: 1000
+        PERFORMANCE_THRESHOLD_FPS: 60
+        PERFORMANCE_THRESHOLD_RENDER_TIME: 16.67
         PERF_THRESHOLD_UPDATE_TIME: 8
-        
+
+    - name: Generate performance report
+      if: always()
+      run: |
+        echo "### Performance Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "- Average FPS: $(cat performance-results.json | jq .avgFps)" >> $GITHUB_STEP_SUMMARY
+        echo "- Average render time: $(cat performance-results.json | jq .avgRenderTime)ms" >> $GITHUB_STEP_SUMMARY
+        echo "- Frame time consistency: $(cat performance-results.json | jq .frameTimeConsistency)%" >> $GITHUB_STEP_SUMMARY
+
     - name: Upload performance results
       if: always()
       uses: actions/upload-artifact@v3
@@ -49,22 +62,58 @@ jobs:
           tests/performance/results/*.json
           tests/performance/reports/
 
-  build:
+  benchmark:
     needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run collision system benchmarks
+      run: |
+        npm run benchmark:collision
+      env:
+        BENCHMARK_SAMPLES: 100
+        BENCHMARK_ITERATIONS: 5000
+        
+    - name: Store benchmark results
+      uses: actions/upload-artifact@v3
+      with:
+        name: benchmark-results
+        path: benchmark-results/
+        retention-days: 90
+
+    - name: Compare with baseline
+      run: |
+        node scripts/compare-benchmarks.js
+      continue-on-error: true
+
+  build:
+    needs: [test, benchmark]
     runs-on: ubuntu-latest
     
     steps:
     - uses: actions/checkout@v3
     
-    - name: Setup Node.js
+    - name: Use Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '16.x'
+        node-version: '18.x'
         cache: 'npm'
-    
+        
     - name: Install dependencies
       run: npm ci
-    
+      
     - name: Build
       run: npm run build
       
@@ -73,11 +122,12 @@ jobs:
       with:
         name: dist
         path: dist/
+        retention-days: 30
 
   deploy:
     needs: build
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     
     steps:
     - name: Download build artifacts
@@ -85,8 +135,8 @@ jobs:
       with:
         name: dist
         path: dist/
-    
-    - name: Deploy
+        
+    - name: Deploy to production
       run: |
         # Add deployment steps here
         echo "Deploying to production..."
